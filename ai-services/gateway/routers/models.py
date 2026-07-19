@@ -2,13 +2,7 @@
 
 from fastapi import APIRouter
 from common.logging import setup_logging
-from common.config import settings
-from gateway.providers.openai_provider import OpenAIProvider
-from gateway.providers.claude_provider import ClaudeProvider
-from gateway.providers.deepseek_provider import DeepSeekProvider
-from gateway.providers.sensenova_provider import SenseNovaProvider
-from gateway.providers.keling_provider import KelingProvider
-from gateway.providers.doubao_provider import DoubaoProvider
+from gateway.providers.registry import get_providers, init_providers as init_registry, refresh_all_models
 
 logger = setup_logging("models_router")
 
@@ -22,51 +16,27 @@ _PROVIDER_NAMES = {
     "sensenova": "SenseNova（商汤大装置）",
     "keling": "可灵 AI",
     "doubao": "豆包",
+    "veo": "Google Veo",
 }
-
-# 全局 Provider 实例（lazy init，由 init_providers() 填充）
-_all_providers: list = []
 
 
 async def init_providers() -> None:
     """初始化所有 Provider 并刷新模型列表（服务启动时调用）"""
-    global _all_providers
-
-    _all_providers = [
-        OpenAIProvider(api_key=settings.openai_api_key),
-        ClaudeProvider(api_key=settings.anthropic_api_key),
-        DeepSeekProvider(api_key=settings.deepseek_api_key),
-        SenseNovaProvider(api_key=settings.sensenova_api_key),
-        KelingProvider(),
-        DoubaoProvider(),
-    ]
-
-    logger.info("正在初始化 AI Provider 模型列表...")
-    for provider in _all_providers:
-        if hasattr(provider, "refresh_models") and callable(getattr(provider, "refresh_models")):
-            try:
-                await provider.refresh_models()
-            except Exception as e:
-                logger.warning(f"{provider.name} 模型列表刷新失败: {e}")
-
-    model_count = sum(len(p.supported_models) for p in _all_providers)
-    logger.info(f"所有 Provider 初始化完成，共 {model_count} 个模型")
+    init_registry()  # 初始化注册表（同步，幂等）
+    await refresh_all_models()  # 刷新模型列表
 
 
 @router.get("/models")
 async def list_models():
     """列出所有可用 AI 模型（按 Provider 分组）"""
     providers = []
-    seen_models = set()
-    for provider in _all_providers:
+    for provider in get_providers():
         models = []
         for model in provider.supported_models:
-            if model not in seen_models:
-                seen_models.add(model)
-                models.append({
-                    "id": model,
-                    "provider": provider.name,
-                })
+            models.append({
+                "id": model,
+                "provider": provider.name,
+            })
         if models:
             providers.append({
                 "provider": provider.name,

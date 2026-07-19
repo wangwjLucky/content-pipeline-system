@@ -3,8 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
-from common.config import settings
-from gateway.providers.keling_provider import KelingProvider
+from gateway.providers.registry import get_provider
 
 router = APIRouter(tags=["video"])
 
@@ -28,15 +27,11 @@ class VideoStatusResponse(BaseModel):
 
 @router.post("/video/generate")
 async def video_generate(request: VideoGenerateRequest):
-    """生成视频素材
-
-    需要配置对应视频生成模型的 API Key（如可灵、Veo 等）。
-    当前使用 KelingProvider，需设置对应环境变量。
-    """
-    provider = KelingProvider(
-        api_key=settings.openai_api_key,  # 替换为可灵/Veo API Key
-    )
-    result = provider.generate(
+    """生成视频素材"""
+    provider = get_provider("keling") or get_provider("veo") or get_provider("openai")
+    if provider is None:
+        return {"task_id": request.task_id, "error": "视频生成服务不可用：未配置 Provider", "status": "failed"}
+    result = await provider.generate(
         prompt=request.prompt,
         model=request.model,
         duration=request.duration,

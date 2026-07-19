@@ -16,14 +16,14 @@ class ClaudeProvider(BaseProvider):
         super().__init__()
         self.api_key = api_key
         self.endpoint = endpoint or "https://api.anthropic.com"
-        self._http_client = httpx.Client(timeout=120)
+        self._http_client = httpx.AsyncClient(timeout=120)
         self._supported_models = ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5"]
 
     @property
     def name(self) -> str:
         return "anthropic"
 
-    def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         model = kwargs.get("model", "claude-sonnet-4-6")
         temperature = kwargs.get("temperature", 0.7)
         max_tokens = kwargs.get("max_tokens", 4096)
@@ -53,11 +53,11 @@ class ClaudeProvider(BaseProvider):
         }
         if system_prompt:
             request_body["system"] = system_prompt
-        if temperature:
+        if temperature is not None:
             request_body["temperature"] = temperature
 
         try:
-            response = self._http_client.post(
+            response = await self._http_client.post(
                 f"{self.endpoint}/v1/messages",
                 headers={
                     "x-api-key": self.api_key,
@@ -69,20 +69,22 @@ class ClaudeProvider(BaseProvider):
             )
             response.raise_for_status()
             data = response.json()
-            content = data["content"][0]["text"]
+            content_blocks = data.get("content", [])
+            content = content_blocks[0].get("text", "") if content_blocks else ""
+            usage = data.get("usage", {})
             logger.info(
                 f"Claude API 完成: model={model}, "
-                f"input_tokens={data['usage']['input_tokens']}, "
-                f"output_tokens={data['usage']['output_tokens']}"
+                f"input_tokens={usage.get('input_tokens', 'unknown')}, "
+                f"output_tokens={usage.get('output_tokens', 'unknown')}"
             )
             return content
         except Exception as e:
             logger.error(f"Claude API 调用失败: {e}，回退到模拟数据")
             return self._mock_chat(messages)
 
-    def generate(self, prompt: str, **kwargs) -> Any:
+    async def generate(self, prompt: str, **kwargs) -> Any:
         messages = [{"role": "user", "content": prompt}]
-        result = self.chat(messages, **kwargs)
+        result = await self.chat(messages, **kwargs)
 
         try:
             return json.loads(result)

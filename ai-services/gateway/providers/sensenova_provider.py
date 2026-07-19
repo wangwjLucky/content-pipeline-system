@@ -30,7 +30,7 @@ class SenseNovaProvider(BaseProvider):
         super().__init__()
         self.api_key = api_key
         self.endpoint = endpoint or "https://token.sensenova.cn/v1"
-        self._http_client = httpx.Client(timeout=120)
+        self._http_client = httpx.AsyncClient(timeout=120)
         self._supported_models = [
             "sensenova-6.7-flash-lite",   # 轻量多模态，支持文本+图像
             "sensenova-u1-fast",          # U1 加速版（使用 /v1/images/generations）
@@ -42,7 +42,7 @@ class SenseNovaProvider(BaseProvider):
     def name(self) -> str:
         return "sensenova"
 
-    def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         """AI 对话（OpenAI 兼容格式）
 
         参数说明:
@@ -70,7 +70,7 @@ class SenseNovaProvider(BaseProvider):
             return self._mock_chat(messages)
 
         try:
-            return self._chat_completions(
+            return await self._chat_completions(
                 model, messages, temperature, max_tokens,
                 top_p, stream, stop, reasoning_effort,
             )
@@ -78,7 +78,7 @@ class SenseNovaProvider(BaseProvider):
             logger.error(f"SenseNova API 调用失败: {e}，回退到模拟数据")
             return self._mock_chat(messages)
 
-    def _chat_completions(
+    async def _chat_completions(
         self, model: str, messages: list[dict], temperature: float,
         max_tokens: int, top_p: float, stream: bool, stop: list[str] | None,
         reasoning_effort: str | None = None,
@@ -98,7 +98,7 @@ class SenseNovaProvider(BaseProvider):
             request_body["reasoning_effort"] = reasoning_effort
         request_body = {k: v for k, v in request_body.items() if v is not None}
 
-        response = self._http_client.post(
+        response = await self._http_client.post(
             f"{self.endpoint}/chat/completions",
             headers={
                 "Authorization": f"Bearer {self.api_key}",
@@ -110,12 +110,15 @@ class SenseNovaProvider(BaseProvider):
         response.raise_for_status()
         data = response.json()
 
-        msg = data.get("choices", [{}])[0].get("message", {})
+        choices = data.get("choices", [])
+        msg = choices[0].get("message", {}) if choices else {}
         # 不同模型回复字段不同：
         #   sensenova-6.7-flash-lite → reasoning
         #   glm-5.2                 → reasoning_content
         #   deepseek-v4-flash       → content + reasoning_content
-        content = msg.get("content") or msg.get("reasoning", "") or msg.get("reasoning_content", "")
+        content = msg.get("content")
+        if not content:
+            content = msg.get("reasoning", "") or msg.get("reasoning_content", "")
         usage = data.get("usage", {})
         logger.info(
             f"SenseNova 完成: model={model}, "
@@ -124,14 +127,14 @@ class SenseNovaProvider(BaseProvider):
         )
         return content
 
-    def generate(self, prompt: str, **kwargs) -> Any:
+    async def generate(self, prompt: str, **kwargs) -> Any:
         """通用生成"""
         system_prompt = kwargs.get("system_prompt", "你是一个有帮助的助手。")
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ]
-        result = self.chat(messages, **kwargs)
+        result = await self.chat(messages, **kwargs)
 
         try:
             return json.loads(result)

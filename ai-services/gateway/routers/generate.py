@@ -1,36 +1,29 @@
 """通用生成和 embedding 路由。"""
 
 from fastapi import APIRouter, HTTPException
-from common.config import settings
 from common.models import GenerateRequest, GenerateResponse
-from gateway.providers.openai_provider import OpenAIProvider
-from gateway.providers.deepseek_provider import DeepSeekProvider
-from gateway.providers.sensenova_provider import SenseNovaProvider
+from gateway.providers.registry import get_providers
 
 router = APIRouter(tags=["generate"])
-
-# 通用生成 Provider 注册表
-_generate_providers = {
-    "openai": OpenAIProvider(api_key=settings.openai_api_key),
-    "deepseek": DeepSeekProvider(api_key=settings.deepseek_api_key),
-    "sensenova": SenseNovaProvider(api_key=settings.sensenova_api_key),
-}
 
 
 def _get_generate_provider(model: str):
     """根据模型名获取合适的生成 Provider"""
-    for name, provider in _generate_providers.items():
+    for provider in get_providers():
         if model in provider.supported_models:
             return provider
     # 默认使用 OpenAI
-    return _generate_providers.get("openai", OpenAIProvider())
+    from gateway.providers.registry import get_provider as _gp
+    return _gp("openai") or _gp("deepseek")
 
 
 @router.post("/generate", response_model=GenerateResponse)
 async def generate(request: GenerateRequest):
     """通用 AI 生成"""
     provider = _get_generate_provider(request.model)
-    result = provider.generate(
+    if provider is None:
+        raise HTTPException(status_code=400, detail=f"不支持的模型: {request.model}")
+    result = await provider.generate(
         prompt=request.prompt,
         model=request.model,
         temperature=request.temperature,

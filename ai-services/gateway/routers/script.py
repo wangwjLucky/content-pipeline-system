@@ -3,29 +3,17 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
-from common.config import settings
-from gateway.providers.openai_provider import OpenAIProvider
-from gateway.providers.claude_provider import ClaudeProvider
-from gateway.providers.deepseek_provider import DeepSeekProvider
-from gateway.providers.sensenova_provider import SenseNovaProvider
+from gateway.providers.registry import get_providers
 
 router = APIRouter(tags=["script"])
-
-# 脚本生成 Provider 注册表
-_script_providers = {
-    "openai": OpenAIProvider(api_key=settings.openai_api_key),
-    "anthropic": ClaudeProvider(api_key=settings.anthropic_api_key),
-    "deepseek": DeepSeekProvider(api_key=settings.deepseek_api_key),
-    "sensenova": SenseNovaProvider(api_key=settings.sensenova_api_key),
-}
 
 
 def _get_script_provider(model: str):
     """根据模型名获取 Provider，默认使用 OpenAI"""
-    for name, provider in _script_providers.items():
+    for provider in get_providers():
         if model in provider.supported_models:
             return provider
-    return _script_providers.get("openai", OpenAIProvider())
+    return None
 
 
 class ScriptGenerateRequest(BaseModel):
@@ -48,7 +36,9 @@ class ScriptRewriteRequest(BaseModel):
 async def script_generate(request: ScriptGenerateRequest):
     """AI 生成脚本内容"""
     provider = _get_script_provider(request.model)
-    result = provider.generate(
+    if provider is None:
+        return {"task_id": request.task_id, "content": {"content": "不支持的模型"}, "model": request.model}
+    result = await provider.generate(
         prompt=f"你是一个 AI 技术视频脚本作者。请为主题「{request.topic_title}」生成一个完整的视频脚本，包含开场、正文和结尾。",
         model=request.model,
         temperature=request.temperature,
@@ -61,8 +51,10 @@ async def script_generate(request: ScriptGenerateRequest):
 async def script_rewrite(request: ScriptRewriteRequest):
     """重写/优化脚本"""
     provider = _get_script_provider(request.model)
+    if provider is None:
+        return {"content": {"content": "不支持的模型"}, "model": request.model}
     instructions = request.instructions or "让语言更通俗易懂，适合抖音短视频风格"
-    result = provider.generate(
+    result = await provider.generate(
         prompt=f"请根据以下要求重写脚本：{instructions}\n\n原始脚本：\n{request.content}",
         model=request.model,
     )

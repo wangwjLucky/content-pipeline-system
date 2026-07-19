@@ -35,7 +35,12 @@ async function handleLogin() {
   loading.value = true
   try {
     const res: any = await login(form.value)
-    localStorage.setItem('token', res.data?.token || 'mock-token')
+    const token = res.data?.token
+    if (!token) {
+      message.error('登录失败：服务器未返回有效的认证令牌')
+      return
+    }
+    localStorage.setItem('token', token)
     localStorage.setItem('username', form.value.username)
     message.success('登录成功')
     router.push('/dashboard')

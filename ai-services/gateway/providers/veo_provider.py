@@ -17,9 +17,9 @@ class VeoProvider(BaseProvider):
     def name(self) -> str:
         return "veo"
 
-    def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         return "视频模型不支持对话"
 
-    def generate(self, prompt: str, **kwargs) -> Any:
+    async def generate(self, prompt: str, **kwargs) -> Any:
         """提交视频生成任务到 Veo API"""
         return {"task_id": "mock_veo_task", "status": "pending", "prompt": prompt}

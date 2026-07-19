@@ -1,5 +1,6 @@
 package com.pipeline.admin.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pipeline.admin.entity.Script;
 import com.pipeline.admin.entity.Storyboard;
 import com.pipeline.admin.entity.Task;
@@ -91,21 +92,39 @@ public class CallbackController {
     private void handleSuccess(Task task, String service, Map<String, Object> data) {
         switch (service) {
             case "script" -> {
-                Script script = new Script();
-                script.setTaskId(task.getId());
-                script.setTopicId(task.getTopicId());
-                script.setTitle(data != null ? (String) data.get("title") : null);
-                script.setContent(data != null ? (String) data.get("content") : null);
-                script.setSubtitle(data != null ? (String) data.get("subtitle") : null);
-                script.setStatus("PENDING_REVIEW");
-                scriptMapper.insert(script);
-                taskService.updateStatus(task.getId(), "SCRIPT_REVIEW", 30, null);
-                Task update = new Task();
-                update.setId(task.getId());
-                update.setScriptId(script.getId());
-                update.setVersion(task.getVersion());
-                taskMapper.updateById(update);
-                log.info("脚本生成完成: taskId={}, scriptId={}", task.getId(), script.getId());
+                // 幂等性检查：如果该任务已有脚本，则更新现有脚本而非创建新记录
+                LambdaQueryWrapper<Script> existingQuery = new LambdaQueryWrapper<Script>()
+                        .eq(Script::getTaskId, task.getId());
+                Script existingScript = scriptMapper.selectOne(existingQuery);
+
+                if (existingScript != null) {
+                    // 更新现有脚本
+                    existingScript.setTitle(data != null ? (String) data.get("title") : null);
+                    existingScript.setContent(data != null ? (String) data.get("content") : null);
+                    existingScript.setSubtitle(data != null ? (String) data.get("subtitle") : null);
+                    existingScript.setStatus("PENDING_REVIEW");
+                    scriptMapper.updateById(existingScript);
+                    taskService.updateStatus(task.getId(), "SCRIPT_REVIEW", 30, null);
+                    log.info("脚本已更新（幂等回调）: taskId={}, scriptId={}", task.getId(), existingScript.getId());
+                } else {
+                    Script script = new Script();
+                    script.setTaskId(task.getId());
+                    script.setTopicId(task.getTopicId());
+                    script.setTitle(data != null ? (String) data.get("title") : null);
+                    script.setContent(data != null ? (String) data.get("content") : null);
+                    script.setSubtitle(data != null ? (String) data.get("subtitle") : null);
+                    script.setStatus("PENDING_REVIEW");
+                    scriptMapper.insert(script);
+                    taskService.updateStatus(task.getId(), "SCRIPT_REVIEW", 30, null);
+                    // 重新查询 task 获取最新版本号，避免 updateStatus 乐观锁递增后版本号陈旧
+                    Task freshTask = taskMapper.selectById(task.getId());
+                    Task update = new Task();
+                    update.setId(freshTask.getId());
+                    update.setScriptId(script.getId());
+                    update.setVersion(freshTask.getVersion());
+                    taskMapper.updateById(update);
+                    log.info("脚本生成完成: taskId={}, scriptId={}", task.getId(), script.getId());
+                }
             }
             case "prompt" -> {
                 // 保存 AI 自动拆分的分镜数据
@@ -135,11 +154,11 @@ public class CallbackController {
             }
             case "video" -> {
                 taskService.updateStatus(task.getId(), "VOICEOVER", 60, null);
-                log.info("视频生成完成: taskId={}", task.getId());
+                log.info("视频生成完成: taskId={}（若任务已处于 VOICEOVER 状态，表示另一素材仍在处理中）", task.getId());
             }
             case "image" -> {
                 taskService.updateStatus(task.getId(), "VOICEOVER", 60, null);
-                log.info("图片生成完成: taskId={}", task.getId());
+                log.info("图片生成完成: taskId={}（若任务已处于 VOICEOVER 状态，表示另一素材仍在处理中）", task.getId());
             }
             case "voice" -> {
                 taskService.updateStatus(task.getId(), "EDITING", 80, null);

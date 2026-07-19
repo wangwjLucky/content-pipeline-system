@@ -41,7 +41,15 @@ public class AuthController {
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             return Result.error(401, "未认证");
         }
-        Long userId = (Long) auth.getPrincipal();
+        Object principal = auth.getPrincipal();
+        Long userId;
+        if (principal instanceof Long) {
+            userId = (Long) principal;
+        } else if (principal instanceof String) {
+            userId = Long.valueOf((String) principal);
+        } else {
+            return Result.error(401, "无法解析用户身份");
+        }
         SysUser user = userMapper.selectById(userId);
         if (user == null) return Result.error(404, "用户不存在");
         return Result.success(Map.of(

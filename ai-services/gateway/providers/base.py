@@ -11,13 +11,13 @@ class BaseProvider(ABC):
         self._supported_models: list[str] = []
 
     @abstractmethod
-    def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
-        """对话生成"""
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
+        """对话生成（异步）"""
         ...
 
     @abstractmethod
-    def generate(self, prompt: str, **kwargs) -> Any:
-        """通用生成"""
+    async def generate(self, prompt: str, **kwargs) -> Any:
+        """通用生成（异步）"""
         ...
 
     @property

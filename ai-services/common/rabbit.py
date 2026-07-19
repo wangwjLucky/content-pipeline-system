@@ -1,4 +1,9 @@
-"""RabbitMQ 连接管理与消费者基类。"""
+"""RabbitMQ 连接管理与消费者基类。
+
+注意：
+  - consume() 是阻塞调用，必须在独立线程中执行，严禁在 FastAPI 启动事件或 async 协程中直接调用
+  - 推荐使用 start_consumer_thread() 方法在后台线程中启动消费
+"""
 
 import json
 import threading
@@ -60,24 +65,56 @@ class RabbitMQClient:
             )
 
     def consume(self, queue: str, callback: Callable):
-        """消费队列消息（队列需已存在，由 Java 声明）"""
-        if not self.channel:
-            self.connect()
-        # 使用 passive 声明：队列必须已存在，避免与 Java 声明的参数冲突
-        try:
-            self.channel.queue_declare(queue=queue, durable=True, passive=True)
-        except Exception:
-            # 如果 passive 失败，尝试非 passive 声明
-            self.channel.queue_declare(queue=queue, durable=True)
-        self.channel.basic_qos(prefetch_count=1)
-        self.channel.basic_consume(
-            queue=queue,
-            on_message_callback=lambda ch, method, props, body: self._wrap_callback(
-                ch, method, props, body, callback
-            ),
-        )
+        """消费队列消息（队列需已存在，由 Java 声明）
+
+        警告：此方法是阻塞调用，会永久占用当前线程。
+        必须在独立线程中运行，严禁在 FastAPI 异步路由或启动事件中直接调用。
+        推荐使用 start_consumer_thread() 在后台线程中启动消费。
+        """
+        if threading.current_thread() is threading.main_thread():
+            import warnings
+            warnings.warn(
+                "RabbitMQClient.consume() 在主线程中调用！这将阻塞整个进程。"
+                "请使用 start_consumer_thread() 在后台线程中启动消费。",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        with self._lock:
+            if not self.channel:
+                self.connect()
+            # 使用 passive 声明：队列必须已存在，避免与 Java 声明的参数冲突
+            try:
+                self.channel.queue_declare(queue=queue, durable=True, passive=True)
+            except Exception:
+                # 如果 passive 失败，尝试非 passive 声明
+                self.channel.queue_declare(queue=queue, durable=True)
+            self.channel.basic_qos(prefetch_count=1)
+            self.channel.basic_consume(
+                queue=queue,
+                on_message_callback=lambda ch, method, props, body: self._wrap_callback(
+                    ch, method, props, body, callback
+                ),
+            )
+        # 锁已释放，进入阻塞消费循环（不阻塞其他 publish 操作）
         print(f"[MQ] 开始消费队列: {queue}")
         self.channel.start_consuming()
+
+    def start_consumer_thread(self, queue: str, callback: Callable, daemon: bool = True) -> threading.Thread:
+        """在后台线程中启动 MQ 消费（推荐用法）
+
+        Args:
+            queue: 队列名
+            callback: 消息处理函数
+            daemon: 是否设为守护线程（默认 True，主进程退出时自动结束）
+
+        Returns:
+            启动的线程对象
+        """
+        thread = threading.Thread(target=self.consume, args=(queue, callback), daemon=daemon)
+        thread.start()
+        print(f"[MQ] 消费者线程已启动: queue={queue}, thread={thread.name}")
+        return thread
 
     def _wrap_callback(self, ch, method, props, body, callback):
         """包装回调，自动 ACK"""

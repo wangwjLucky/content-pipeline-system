@@ -17,9 +17,9 @@ class DoubaoProvider(BaseProvider):
     def name(self) -> str:
         return "doubao"
 
-    def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         return "TTS 模型不支持对话"
 
-    def generate(self, prompt: str, **kwargs) -> Any:
+    async def generate(self, prompt: str, **kwargs) -> Any:
         """生成语音"""
         return {"task_id": "mock_tts_task", "status": "pending", "text": prompt}

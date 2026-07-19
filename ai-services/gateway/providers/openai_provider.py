@@ -16,14 +16,14 @@ class OpenAIProvider(BaseProvider):
         super().__init__()
         self.api_key = api_key
         self.endpoint = endpoint or "https://api.openai.com/v1"
-        self._http_client = httpx.Client(timeout=120)
+        self._http_client = httpx.AsyncClient(timeout=120)
         self._supported_models = ["gpt-4o", "gpt-4.1", "gpt-4o-mini", "gpt-3.5-turbo"]
 
     @property
     def name(self) -> str:
         return "openai"
 
-    def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         model = kwargs.get("model", "gpt-4o")
         temperature = kwargs.get("temperature", 0.7)
         max_tokens = kwargs.get("max_tokens", 4096)
@@ -35,7 +35,7 @@ class OpenAIProvider(BaseProvider):
             return self._mock_chat(messages)
 
         try:
-            response = self._http_client.post(
+            response = await self._http_client.post(
                 f"{self.endpoint}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
@@ -51,22 +51,24 @@ class OpenAIProvider(BaseProvider):
             )
             response.raise_for_status()
             data = response.json()
-            content = data["choices"][0]["message"]["content"]
+            choices = data.get("choices", [])
+            content = choices[0].get("message", {}).get("content", "") if choices else ""
+            usage = data.get("usage", {})
             logger.info(
-                f"OpenAI chat 完成: input_tokens={data['usage']['prompt_tokens']}, "
-                f"output_tokens={data['usage']['completion_tokens']}"
+                f"OpenAI chat 完成: input_tokens={usage.get('prompt_tokens', 'unknown')}, "
+                f"output_tokens={usage.get('completion_tokens', 'unknown')}"
             )
             return content
         except Exception as e:
             logger.error(f"OpenAI API 调用失败: {e}，回退到模拟数据")
             return self._mock_chat(messages)
 
-    def generate(self, prompt: str, **kwargs) -> Any:
+    async def generate(self, prompt: str, **kwargs) -> Any:
         messages = [
             {"role": "system", "content": kwargs.get("system_prompt", "你是一个有帮助的助手。")},
             {"role": "user", "content": prompt},
         ]
-        result = self.chat(messages, **kwargs)
+        result = await self.chat(messages, **kwargs)
 
         try:
             return json.loads(result)

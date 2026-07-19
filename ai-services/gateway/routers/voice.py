@@ -3,8 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
-from common.config import settings
-from gateway.providers.doubao_provider import DoubaoProvider
+from gateway.providers.registry import get_provider
 
 router = APIRouter(tags=["voice"])
 
@@ -26,12 +25,11 @@ class VoiceCloneRequest(BaseModel):
 
 @router.post("/voice/generate")
 async def voice_generate(request: VoiceGenerateRequest):
-    """生成配音
-
-    需要配置对应 TTS 服务的 API Key（如豆包、ElevenLabs 等）。
-    """
-    provider = DoubaoProvider(api_key=settings.openai_api_key)  # 替换为对应 TTS API Key
-    result = provider.generate(
+    """生成配音"""
+    provider = get_provider("doubao")
+    if provider is None:
+        return {"task_id": request.task_id, "error": "配音服务不可用：未配置 Provider", "status": "failed"}
+    result = await provider.generate(
         prompt=request.text,
         voice_type=request.voice_type,
         speed=request.speed,

@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class EncryptionConfig {
 
-    @Value("${aes.encryption-key:}")
+    @Value("${AES_ENCRYPTION_KEY:}")
     private String aesKeyFromConfig;
 
     @PostConstruct
@@ -24,7 +24,7 @@ public class EncryptionConfig {
             EncryptionUtil.setKey(aesKeyFromConfig);
             log.info("加密密钥已通过 Spring 配置注入");
         } else {
-            log.warn("未配置 aes.encryption-key（环境变量 AES_ENCRYPTION_KEY），使用默认密钥！生产环境务必更换。");
+            log.warn("未配置 AES_ENCRYPTION_KEY，使用默认密钥！生产环境务必通过环境变量设置 32 字节以上密钥。");
         }
     }
 }

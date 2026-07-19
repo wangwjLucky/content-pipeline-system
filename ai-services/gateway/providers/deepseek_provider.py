@@ -30,7 +30,7 @@ class DeepSeekProvider(BaseProvider):
         super().__init__()
         self.api_key = api_key
         self.endpoint = endpoint.rstrip("/")
-        self._http_client = httpx.Client(timeout=120)
+        self._http_client = httpx.AsyncClient(timeout=120)
         self._supported_models = list(_FALLBACK_MODELS)
 
     @property
@@ -45,7 +45,7 @@ class DeepSeekProvider(BaseProvider):
 
         logger.info("正在从 DeepSeek API 拉取模型列表...")
         try:
-            response = self._http_client.get(
+            response = await self._http_client.get(
                 f"{self.endpoint}/models",
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
@@ -73,45 +73,63 @@ class DeepSeekProvider(BaseProvider):
         except Exception as e:
             logger.warning(f"DeepSeek 模型列表拉取失败: {e}，使用兜底列表")
 
-    def chat(self, messages: list[dict], **kwargs) -> str:
+    async def chat(self, messages: list[dict], **kwargs) -> str:
         model = kwargs.get("model", "deepseek-chat")
         temperature = kwargs.get("temperature", 0.7)
         max_tokens = kwargs.get("max_tokens", 4096)
 
         logger.info(f"DeepSeek chat: model={model}, messages={len(messages)}")
 
-        response = self._http_client.post(
-            f"{self.endpoint}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model,
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            },
-            timeout=120,
-        )
-        response.raise_for_status()
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        logger.info(
-            f"DeepSeek chat 完成: input_tokens={data['usage']['prompt_tokens']}, "
-            f"output_tokens={data['usage']['completion_tokens']}"
-        )
-        return content
+        if not self.api_key:
+            logger.warning("DeepSeek API Key 未配置，返回模拟数据")
+            return self._mock_chat(messages)
 
-    def generate(self, prompt: str, **kwargs) -> Any:
+        try:
+            response = await self._http_client.post(
+                f"{self.endpoint}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                },
+                timeout=120,
+            )
+            response.raise_for_status()
+            data = response.json()
+            choices = data.get("choices", [])
+            if not choices:
+                logger.error(f"DeepSeek API 返回的 choices 为空: {data}")
+                return ""
+            content = choices[0].get("message", {}).get("content", "")
+            usage = data.get("usage", {})
+            logger.info(
+                f"DeepSeek chat 完成: input_tokens={usage.get('prompt_tokens', 'unknown')}, "
+                f"output_tokens={usage.get('completion_tokens', 'unknown')}"
+            )
+            return content
+        except Exception as e:
+            logger.error(f"DeepSeek API 调用失败: {e}，回退到模拟数据")
+            return self._mock_chat(messages)
+
+    async def generate(self, prompt: str, **kwargs) -> Any:
         messages = [
             {"role": "system", "content": kwargs.get("system_prompt", "你是一个有帮助的助手。")},
             {"role": "user", "content": prompt},
         ]
-        result = self.chat(messages, **kwargs)
+        result = await self.chat(messages, **kwargs)
 
         # 尝试解析 JSON 响应
         try:
             return json.loads(result)
         except (json.JSONDecodeError, TypeError):
             return {"content": result}
+
+    def _mock_chat(self, messages: list[dict[str, str]]) -> str:
+        """模拟响应（无 API Key 时降级）"""
+        last_msg = messages[-1]["content"] if messages else ""
+        return f"[DeepSeek] 这是对「{last_msg[:30]}」的模拟回复。 (API Key 未配置)"

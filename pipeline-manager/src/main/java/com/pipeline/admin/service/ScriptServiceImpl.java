@@ -117,7 +117,11 @@ public class ScriptServiceImpl implements ScriptService {
         scriptMapper.updateById(script);
 
         // 回退任务状态到 SCRIPT_REVIEW（如果当前在 STORYBOARD 或后续状态）
-        taskService.updateStatus(script.getTaskId(), "SCRIPT_REVIEW", 30, null);
+        // 先检查当前任务状态，避免对已是 SCRIPT_REVIEW 的任务做无效转换
+        Task currentTask = taskMapper.selectById(script.getTaskId());
+        if (currentTask != null && !"SCRIPT_REVIEW".equals(currentTask.getStatus())) {
+            taskService.updateStatus(script.getTaskId(), "SCRIPT_REVIEW", 30, null);
+        }
 
         log.info("脚本已编辑: scriptId={}, version={}", scriptId, script.getVersion());
         return script;

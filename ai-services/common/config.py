@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     deepseek_api_key: str = ""
     sensenova_api_key: str = ""
+    keling_api_key: str = ""
+    doubao_api_key: str = ""
 
     # 回调认证
     callback_token: str = "pipeline-callback-token-change-in-prod"

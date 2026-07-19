@@ -23,6 +23,9 @@ class OpenAIProvider(BaseProvider):
     def name(self) -> str:
         return "openai"
 
+    async def close(self) -> None:
+        await self._http_client.aclose()
+
     async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         model = kwargs.get("model", "gpt-4o")
         temperature = kwargs.get("temperature", 0.7)

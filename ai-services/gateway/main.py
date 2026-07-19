@@ -19,6 +19,7 @@ from gateway.routers import (
     video,
     voice,
 )
+from gateway.providers.registry import shutdown as shutdown_providers
 
 
 logger = setup_logging("gateway")
@@ -33,6 +34,8 @@ async def lifespan(app: FastAPI):
     await models.init_providers()
 
     yield
+    logger.info("AI Gateway 关闭中...")
+    await shutdown_providers()
     logger.info("AI Gateway 已关闭")
 
 

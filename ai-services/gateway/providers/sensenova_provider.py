@@ -42,6 +42,9 @@ class SenseNovaProvider(BaseProvider):
     def name(self) -> str:
         return "sensenova"
 
+    async def close(self) -> None:
+        await self._http_client.aclose()
+
     async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         """AI 对话（OpenAI 兼容格式）
 

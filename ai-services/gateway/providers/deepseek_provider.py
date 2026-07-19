@@ -37,6 +37,9 @@ class DeepSeekProvider(BaseProvider):
     def name(self) -> str:
         return "deepseek"
 
+    async def close(self) -> None:
+        await self._http_client.aclose()
+
     async def refresh_models(self) -> None:
         """从 DeepSeek API 实时拉取模型列表"""
         if not self.api_key:

@@ -43,11 +43,14 @@ async def list_models():
                 "provider_name": _PROVIDER_NAMES.get(provider.name, provider.name),
                 "models": models,
             })
-    # 扁平列表（兼容前端下拉选择）
+    # 扁平列表（兼容前端下拉选择，按模型 ID 去重）
+    seen_models = set()
     all_models = []
     for p in providers:
         for m in p["models"]:
-            all_models.append(m)
+            if m["id"] not in seen_models:
+                seen_models.add(m["id"])
+                all_models.append(m)
 
     return {
         "models": all_models,

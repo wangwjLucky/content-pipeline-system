@@ -27,10 +27,10 @@ _initialized = False
 
 
 def get_providers() -> list[Any]:
-    """获取所有已初始化的 Provider 列表"""
+    """获取所有已初始化的 Provider 列表（返回副本，防止调用方修改内部状态）"""
     if not _initialized:
         init_providers()
-    return _all_providers
+    return list(_all_providers)
 
 
 def get_provider(name: str) -> Any:
@@ -80,3 +80,16 @@ async def refresh_all_models() -> None:
 
     model_count = sum(len(p.supported_models) for p in _all_providers)
     logger.info(f"模型列表刷新完成，共 {model_count} 个模型")
+
+
+async def shutdown() -> None:
+    """关闭所有 Provider，释放资源（服务关闭时调用）"""
+    if not _initialized:
+        return
+    logger.info("正在关闭 Provider 连接...")
+    for provider in _all_providers:
+        try:
+            await provider.close()
+        except Exception as e:
+            logger.warning(f"{provider.name} 关闭失败: {e}")
+    logger.info("所有 Provider 已关闭")

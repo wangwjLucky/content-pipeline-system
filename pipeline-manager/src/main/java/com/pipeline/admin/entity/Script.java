@@ -1,6 +1,7 @@
 package com.pipeline.admin.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.pipeline.admin.common.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -29,7 +30,8 @@ public class Script extends BaseEntity {
     @Schema(description = "使用的 Prompt 模板 ID")
     private Long promptTemplateId;
 
-    @Schema(description = "版本号")
+    @Schema(description = "版本号（乐观锁）")
+    @Version
     private Integer version;
 
     @Schema(description = "状态: PENDING_REVIEW/APPROVED/REJECTED")

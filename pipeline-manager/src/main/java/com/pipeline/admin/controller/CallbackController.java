@@ -122,8 +122,12 @@ public class CallbackController {
                     update.setId(freshTask.getId());
                     update.setScriptId(script.getId());
                     update.setVersion(freshTask.getVersion());
-                    taskMapper.updateById(update);
-                    log.info("脚本生成完成: taskId={}, scriptId={}", task.getId(), script.getId());
+                    int rows = taskMapper.updateById(update);
+                    if (rows == 0) {
+                        log.error("脚本生成完成但脚本 ID 关联失败（乐观锁冲突）: taskId={}, scriptId={}", task.getId(), script.getId());
+                    } else {
+                        log.info("脚本生成完成: taskId={}, scriptId={}", task.getId(), script.getId());
+                    }
                 }
             }
             case "prompt" -> {

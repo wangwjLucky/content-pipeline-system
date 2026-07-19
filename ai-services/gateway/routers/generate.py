@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 from common.models import GenerateRequest, GenerateResponse
-from gateway.providers.registry import get_providers
+from gateway.providers.registry import get_providers, get_provider
 
 router = APIRouter(tags=["generate"])
 
@@ -12,9 +12,8 @@ def _get_generate_provider(model: str):
     for provider in get_providers():
         if model in provider.supported_models:
             return provider
-    # 默认使用 OpenAI
-    from gateway.providers.registry import get_provider as _gp
-    return _gp("openai") or _gp("deepseek")
+    # 默认使用 OpenAI（或 DeepSeek 兜底）
+    return get_provider("openai") or get_provider("deepseek")
 
 
 @router.post("/generate", response_model=GenerateResponse)

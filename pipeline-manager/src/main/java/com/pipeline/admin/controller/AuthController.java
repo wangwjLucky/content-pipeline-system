@@ -45,8 +45,12 @@ public class AuthController {
         Long userId;
         if (principal instanceof Long) {
             userId = (Long) principal;
-        } else if (principal instanceof String) {
-            userId = Long.valueOf((String) principal);
+        } else if (principal instanceof String s) {
+            try {
+                userId = Long.valueOf(s);
+            } catch (NumberFormatException e) {
+                return Result.error(401, "无法解析用户身份：令牌格式无效");
+            }
         } else {
             return Result.error(401, "无法解析用户身份");
         }

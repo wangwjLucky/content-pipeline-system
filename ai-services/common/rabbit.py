@@ -18,7 +18,7 @@ class RabbitMQClient:
     def __init__(self):
         self.connection: pika.BlockingConnection | None = None
         self.channel: pika.adapters.blocking_connection.BlockingChannel | None = None
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def connect(self):
         """建立连接"""

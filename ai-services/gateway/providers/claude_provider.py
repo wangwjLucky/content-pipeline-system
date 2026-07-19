@@ -23,6 +23,9 @@ class ClaudeProvider(BaseProvider):
     def name(self) -> str:
         return "anthropic"
 
+    async def close(self) -> None:
+        await self._http_client.aclose()
+
     async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         model = kwargs.get("model", "claude-sonnet-4-6")
         temperature = kwargs.get("temperature", 0.7)

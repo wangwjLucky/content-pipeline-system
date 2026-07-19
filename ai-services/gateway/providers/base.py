@@ -29,7 +29,11 @@ class BaseProvider(ABC):
     @property
     def supported_models(self) -> list[str]:
         """支持的模型列表（可动态刷新）"""
-        return self._supported_models
+        return list(self._supported_models)
+
+    async def close(self) -> None:
+        """释放 Provider 资源（默认空操作，子类可覆盖）"""
+        ...
 
     async def refresh_models(self) -> None:
         """从 API 刷新模型列表（默认空操作，子类可覆盖）"""

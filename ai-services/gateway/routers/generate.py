@@ -5,6 +5,7 @@ from common.config import settings
 from common.models import GenerateRequest, GenerateResponse
 from gateway.providers.openai_provider import OpenAIProvider
 from gateway.providers.deepseek_provider import DeepSeekProvider
+from gateway.providers.sensenova_provider import SenseNovaProvider
 
 router = APIRouter(tags=["generate"])
 
@@ -12,6 +13,7 @@ router = APIRouter(tags=["generate"])
 _generate_providers = {
     "openai": OpenAIProvider(api_key=settings.openai_api_key),
     "deepseek": DeepSeekProvider(api_key=settings.deepseek_api_key),
+    "sensenova": SenseNovaProvider(api_key=settings.sensenova_api_key),
 }
 
 

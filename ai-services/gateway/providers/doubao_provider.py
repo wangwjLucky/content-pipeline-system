@@ -8,16 +8,14 @@ class DoubaoProvider(BaseProvider):
     """豆包 TTS 语音合成"""
 
     def __init__(self, api_key: str = "", endpoint: str = ""):
+        super().__init__()
         self.api_key = api_key
         self.endpoint = endpoint or "https://api.volcengine.com"
+        self._supported_models = ["doubao-tts-1", "doubao-tts-2"]
 
     @property
     def name(self) -> str:
         return "doubao"
-
-    @property
-    def supported_models(self) -> list[str]:
-        return ["doubao-tts-1", "doubao-tts-2"]
 
     def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         return "TTS 模型不支持对话"

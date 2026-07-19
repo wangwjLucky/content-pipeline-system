@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     deepseek_api_key: str = ""
+    sensenova_api_key: str = ""
 
     # 回调认证
     callback_token: str = "pipeline-callback-token-change-in-prod"

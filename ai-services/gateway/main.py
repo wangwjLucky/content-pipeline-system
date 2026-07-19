@@ -28,6 +28,10 @@ logger = setup_logging("gateway")
 async def lifespan(app: FastAPI):
     logger.info("AI Gateway 启动中...")
     logger.info(f"RabbitMQ: {settings.rabbitmq_host}:{settings.rabbitmq_port}")
+
+    # 初始化所有 Provider 并刷新模型列表
+    await models.init_providers()
+
     yield
     logger.info("AI Gateway 已关闭")
 

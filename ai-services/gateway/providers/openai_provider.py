@@ -13,17 +13,15 @@ class OpenAIProvider(BaseProvider):
     """OpenAI / 兼容 API 的 LLM 调用（支持 OpenAI、DeepSeek 等兼容接口）"""
 
     def __init__(self, api_key: str = "", endpoint: str = ""):
+        super().__init__()
         self.api_key = api_key
         self.endpoint = endpoint or "https://api.openai.com/v1"
         self._http_client = httpx.Client(timeout=120)
+        self._supported_models = ["gpt-4o", "gpt-4.1", "gpt-4o-mini", "gpt-3.5-turbo"]
 
     @property
     def name(self) -> str:
         return "openai"
-
-    @property
-    def supported_models(self) -> list[str]:
-        return ["gpt-4o", "gpt-4.1", "gpt-4o-mini", "gpt-3.5-turbo"]
 
     def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         model = kwargs.get("model", "gpt-4o")

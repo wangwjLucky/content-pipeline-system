@@ -13,17 +13,15 @@ class ClaudeProvider(BaseProvider):
     """Anthropic Claude API 调用（Messages API）"""
 
     def __init__(self, api_key: str = "", endpoint: str = ""):
+        super().__init__()
         self.api_key = api_key
         self.endpoint = endpoint or "https://api.anthropic.com"
         self._http_client = httpx.Client(timeout=120)
+        self._supported_models = ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5"]
 
     @property
     def name(self) -> str:
         return "anthropic"
-
-    @property
-    def supported_models(self) -> list[str]:
-        return ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5"]
 
     def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         model = kwargs.get("model", "claude-sonnet-4-6")

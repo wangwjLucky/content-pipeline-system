@@ -7,6 +7,9 @@ from typing import Any
 class BaseProvider(ABC):
     """AI 模型 Provider 抽象基类"""
 
+    def __init__(self) -> None:
+        self._supported_models: list[str] = []
+
     @abstractmethod
     def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         """对话生成"""
@@ -24,7 +27,10 @@ class BaseProvider(ABC):
         ...
 
     @property
-    @abstractmethod
     def supported_models(self) -> list[str]:
-        """支持的模型列表"""
+        """支持的模型列表（可动态刷新）"""
+        return self._supported_models
+
+    async def refresh_models(self) -> None:
+        """从 API 刷新模型列表（默认空操作，子类可覆盖）"""
         ...

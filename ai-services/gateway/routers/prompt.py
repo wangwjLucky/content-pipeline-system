@@ -6,12 +6,14 @@ from typing import Optional
 from common.config import settings
 from gateway.providers.openai_provider import OpenAIProvider
 from gateway.providers.deepseek_provider import DeepSeekProvider
+from gateway.providers.sensenova_provider import SenseNovaProvider
 
 router = APIRouter(tags=["prompt"])
 
 _prompt_providers = {
     "openai": OpenAIProvider(api_key=settings.openai_api_key),
     "deepseek": DeepSeekProvider(api_key=settings.deepseek_api_key),
+    "sensenova": SenseNovaProvider(api_key=settings.sensenova_api_key),
 }
 
 

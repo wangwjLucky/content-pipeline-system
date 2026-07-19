@@ -6,14 +6,16 @@ from common.models import ChatRequest, ChatResponse
 from gateway.providers.openai_provider import OpenAIProvider
 from gateway.providers.claude_provider import ClaudeProvider
 from gateway.providers.deepseek_provider import DeepSeekProvider
+from gateway.providers.sensenova_provider import SenseNovaProvider
 
 router = APIRouter(tags=["chat"])
 
 # Provider 注册表（注入 API Key）
-_providers: dict[str, OpenAIProvider | ClaudeProvider | DeepSeekProvider] = {
+_providers: dict[str, OpenAIProvider | ClaudeProvider | DeepSeekProvider | SenseNovaProvider] = {
     "openai": OpenAIProvider(api_key=settings.openai_api_key),
     "anthropic": ClaudeProvider(api_key=settings.anthropic_api_key),
     "deepseek": DeepSeekProvider(api_key=settings.deepseek_api_key),
+    "sensenova": SenseNovaProvider(api_key=settings.sensenova_api_key),
 }
 
 

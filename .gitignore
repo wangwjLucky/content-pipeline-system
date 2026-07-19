@@ -1,0 +1,41 @@
+# Claude Code
+.claude/
+
+# 环境变量
+.env
+
+# Node
+node_modules/
+dist/
+
+# Java
+target/
+*.class
+*.jar
+*.war
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# 日志
+logs/
+*.log
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 构建输出
+*.egg-info/

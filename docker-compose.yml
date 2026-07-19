@@ -1,0 +1,241 @@
+services:
+    postgres:
+        image: postgres:16
+        environment:
+            POSTGRES_DB: pipeline
+            POSTGRES_USER: pipeline
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+            - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+        ports:
+            - "5432:5432"
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready -U pipeline" ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    redis:
+        image: redis:7-alpine
+        volumes:
+            - redis_data:/data
+        ports:
+            - "6379:6379"
+
+    minio:
+        image: minio/minio
+        command: server /data --console-address ":9001"
+        environment:
+            MINIO_ROOT_USER: ${MINIO_USER:-pipeline}
+            MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-pipeline123}
+        volumes:
+            - minio_data:/data
+        ports:
+            - "9000:9000"
+            - "9001:9001"
+
+    rabbitmq:
+        image: rabbitmq:3-management
+        environment:
+            RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-pipeline}
+            RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-pipeline123}
+        volumes:
+            - rabbitmq_data:/var/lib/rabbitmq
+        ports:
+            - "5672:5672"
+            - "15672:15672"
+
+    ai-gateway:
+        build:
+            context: ./ai-services
+            dockerfile: gateway/Dockerfile
+        env_file: ./ai-services/gateway/.env
+        ports:
+            - "8001:8001"
+        environment:
+            PIPELINE_RABBITMQ_HOST: rabbitmq
+            PIPELINE_MINIO_ENDPOINT: http://minio:9000
+            PIPELINE_GATEWAY_URL: http://ai-gateway:8001
+            PIPELINE_CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+        depends_on:
+            rabbitmq:
+                condition: service_started
+            minio:
+                condition: service_started
+        restart: unless-stopped
+        volumes:
+            - ./ai-services/gateway/logs:/app/logs
+
+    script-service:
+        build:
+            context: ./ai-services
+            dockerfile: script-service/Dockerfile
+        env_file: ./ai-services/script-service/.env
+        ports:
+            - "8002:8002"
+        environment:
+            PIPELINE_RABBITMQ_HOST: rabbitmq
+            PIPELINE_GATEWAY_URL: http://ai-gateway:8001
+            PIPELINE_CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+        depends_on:
+            rabbitmq:
+                condition: service_started
+            ai-gateway:
+                condition: service_started
+        restart: unless-stopped
+        volumes:
+            - ./ai-services/script-service/logs:/app/logs
+
+    prompt-service:
+        build:
+            context: ./ai-services
+            dockerfile: prompt-service/Dockerfile
+        env_file: ./ai-services/prompt-service/.env
+        ports:
+            - "8003:8003"
+        environment:
+            PIPELINE_RABBITMQ_HOST: rabbitmq
+            PIPELINE_GATEWAY_URL: http://ai-gateway:8001
+            PIPELINE_CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+        depends_on:
+            rabbitmq:
+                condition: service_started
+            ai-gateway:
+                condition: service_started
+        restart: unless-stopped
+        volumes:
+            - ./ai-services/prompt-service/logs:/app/logs
+
+    video-service:
+        build:
+            context: ./ai-services
+            dockerfile: video-service/Dockerfile
+        env_file: ./ai-services/video-service/.env
+        ports:
+            - "8004:8004"
+        environment:
+            PIPELINE_RABBITMQ_HOST: rabbitmq
+            PIPELINE_GATEWAY_URL: http://ai-gateway:8001
+            PIPELINE_CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+        depends_on:
+            rabbitmq:
+                condition: service_started
+            ai-gateway:
+                condition: service_started
+        restart: unless-stopped
+        volumes:
+            - ./ai-services/video-service/logs:/app/logs
+
+    voice-service:
+        build:
+            context: ./ai-services
+            dockerfile: voice-service/Dockerfile
+        env_file: ./ai-services/voice-service/.env
+        ports:
+            - "8005:8005"
+        environment:
+            PIPELINE_RABBITMQ_HOST: rabbitmq
+            PIPELINE_GATEWAY_URL: http://ai-gateway:8001
+            PIPELINE_CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+        depends_on:
+            rabbitmq:
+                condition: service_started
+            ai-gateway:
+                condition: service_started
+        restart: unless-stopped
+        volumes:
+            - ./ai-services/voice-service/logs:/app/logs
+
+    ffmpeg-service:
+        build:
+            context: ./ai-services
+            dockerfile: ffmpeg-service/Dockerfile
+        env_file: ./ai-services/ffmpeg-service/.env
+        ports:
+            - "8006:8006"
+        environment:
+            PIPELINE_RABBITMQ_HOST: rabbitmq
+            PIPELINE_GATEWAY_URL: http://ai-gateway:8001
+            PIPELINE_CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+        depends_on:
+            rabbitmq:
+                condition: service_started
+            ai-gateway:
+                condition: service_started
+        restart: unless-stopped
+        volumes:
+            - ./ai-services/ffmpeg-service/logs:/app/logs
+
+    image-service:
+        build:
+            context: ./ai-services
+            dockerfile: image-service/Dockerfile
+        env_file: ./ai-services/image-service/.env
+        ports:
+            - "8007:8007"
+        environment:
+            PIPELINE_RABBITMQ_HOST: rabbitmq
+            PIPELINE_MINIO_ENDPOINT: http://minio:9000
+            PIPELINE_GATEWAY_URL: http://ai-gateway:8001
+            PIPELINE_CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+        depends_on:
+            rabbitmq:
+                condition: service_started
+            ai-gateway:
+                condition: service_started
+        restart: unless-stopped
+        volumes:
+            - ./ai-services/image-service/logs:/app/logs
+
+    # ========== Java 后端 ==========
+    pipeline-admin:
+        build:
+            context: ./pipeline-manager
+            dockerfile: Dockerfile
+        ports:
+            - "8080:8080"
+        environment:
+            DB_PASSWORD: ${DB_PASSWORD:-pipeline123}
+            SPRING_PROFILES_ACTIVE: dev
+            CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+            spring.datasource.url: jdbc:postgresql://postgres:5432/pipeline
+            spring.datasource.username: pipeline
+            spring.datasource.password: ${DB_PASSWORD:-pipeline123}
+            spring.rabbitmq.host: rabbitmq
+            spring.rabbitmq.port: "5672"
+            spring.rabbitmq.username: ${RABBITMQ_USER:-pipeline}
+            spring.rabbitmq.password: ${RABBITMQ_PASSWORD:-pipeline123}
+            spring.data.redis.host: redis
+            spring.data.redis.port: "6379"
+            minio.endpoint: http://minio:9000
+            minio.access-key: ${MINIO_USER:-pipeline}
+            minio.secret-key: ${MINIO_PASSWORD:-pipeline123}
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_started
+            rabbitmq:
+                condition: service_started
+            minio:
+                condition: service_started
+        restart: unless-stopped
+
+    # ========== 前端 ==========
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile
+        ports:
+            - "80:80"
+        depends_on:
+            pipeline-admin:
+                condition: service_started
+        restart: unless-stopped
+
+volumes:
+    postgres_data:
+    redis_data:
+    minio_data:
+    rabbitmq_data:

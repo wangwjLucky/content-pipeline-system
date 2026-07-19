@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: pipeline-admin
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/pipeline
+    username: pipeline
+    password: ${DB_PASSWORD:pipeline123}
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: pipeline
+    password: pipeline123
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+jwt:
+  # 生产环境务必通过 JWT_SECRET 环境变量设置强密钥
+  secret: ${JWT_SECRET:pipeline-secret-key-change-in-prod}
+
+# 回调地址（供 Python AI 服务回调 Java 使用）
+# Docker 部署时改为 http://pipeline-admin:8080
+pipeline:
+  callback-base-url: ${CALLBACK_BASE_URL:http://host.docker.internal:8080}
+  callback-token: ${CALLBACK_TOKEN:pipeline-callback-token-change-in-prod}
+
+minio:
+  endpoint: http://localhost:9000
+  access-key: pipeline
+  secret-key: pipeline123
+  region: us-east-1

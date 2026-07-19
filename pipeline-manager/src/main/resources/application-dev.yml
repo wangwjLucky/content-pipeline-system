@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/pipeline
+    username: pipeline
+    password: ${DB_PASSWORD:pipeline123}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    username: pipeline
+    password: ${RABBITMQ_PASSWORD:pipeline123}
+
+logging:
+  level:
+    com.pipeline: DEBUG

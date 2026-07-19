@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 定义文件名称，按照日志级别定义文件，不同级别的日志输出到不同的文件里面 -->
+    <property name="log.error" value="error.log"/>
+    <property name="log.warn" value="warn.log"/>
+    <property name="log.info" value="info.log"/>
+    <property name="log.debug" value="debug.log"/>
+    <property name="log.base" value="${user.dir}/logs"/>
+    <property name="fileSize" value="30MB"/>
+    <property name="totalSizeCap" value="1GB"/>
+
+    <property name="log.pattern" value="[%date{yyyy-MM-dd HH:mm:ss.SSS}][%level][%thread][%logger{56}.%method:%L] - [%msg]%n"/>
+    <property name="maxDays" value="3"/>
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>${log.pattern}</pattern>
+        </layout>
+    </appender>
+    <appender name="file.debug" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.base}/${log.debug}</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件名 -->
+            <fileNamePattern>${log.base}/${log.debug}.%d{yyyyMMdd}.%i.log</fileNamePattern>
+            <!-- 日志文件最大尺寸 -->
+            <maxFileSize>${fileSize}</maxFileSize>
+            <!--日志文件保留天数 -->
+            <maxHistory>${maxDays}</maxHistory>
+            <totalSizeCap>${totalSizeCap}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <appender name="file.info" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.base}/${log.info}</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件名 -->
+            <fileNamePattern>${log.base}/${log.info}.%d{yyyyMMdd}.%i.log</fileNamePattern>
+            <!-- 日志文件最大尺寸 -->
+            <maxFileSize>${fileSize}</maxFileSize>
+            <!--日志文件保留天数 -->
+            <maxHistory>${maxDays}</maxHistory>
+            <totalSizeCap>${totalSizeCap}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <appender name="file.warn" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.base}/${log.warn}</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件名 -->
+            <fileNamePattern>${log.base}/${log.warn}.%d{yyyyMMdd}.%i.log</fileNamePattern>
+            <!-- 日志文件最大尺寸 -->
+            <maxFileSize>${fileSize}</maxFileSize>
+            <!--日志文件保留天数 -->
+            <maxHistory>${maxDays}</maxHistory>
+            <totalSizeCap>${totalSizeCap}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <appender name="file.error" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.base}/${log.error}</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件名 -->
+            <fileNamePattern>${log.base}/${log.error}.%d{yyyyMMdd}.%i.log</fileNamePattern>
+            <!-- 日志文件最大尺寸 -->
+            <maxFileSize>${fileSize}</maxFileSize>
+            <!--日志文件保留天数 -->
+            <maxHistory>${maxDays}</maxHistory>
+            <totalSizeCap>${totalSizeCap}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="error" />
+    <logger name="org.apache.kafka.clients.admin.AdminClientConfig" level="error" />
+    <logger name="org.springframework.beans.factory" level="ERROR"/>
+    <logger name="org.springframework.kafka" level="ERROR"/>
+    <logger name="org.apache.kafka" level="ERROR"/>
+    <logger name="org.springframework.integration.endpoint" level="ERROR"/>
+    <logger name="springfox.documentation.spring.web" level="ERROR"/>
+    <logger name="org.springframework.web.servlet.DispatcherServlet" level="ERROR"/>
+    <logger name="org.springframework.data.redis" level="ERROR"/>
+    <logger name="org.springframework.web.servlet.mvc.method.annotation" level="ERROR"/>
+    <logger name="org.mybatis.spring.SqlSessionUtils" level="ERROR" />
+    <logger name="org.springframework.jdbc.datasource.DataSourceUtils" level="ERROR" />
+    <logger name="java.sql.Connection" level="ERROR" />
+    <logger name="java.sql.PreparedStatement" level="ERROR" />
+    <logger name="org.springframework.boot.web.filter.OrderedRequestContextFilter" level="ERROR" />
+    <logger name="org.apache.zookeeper.ClientCnxn" level="ERROR" />
+    <logger name="com.netflix.loadbalancer.BaseLoadBalancer" level="ERROR" />
+    <logger name="org.apache.curator.framework" level="ERROR" />
+    <logger name="org.apache.http.impl.conn.PoolingHttpClientConnectionManager" level="ERROR" />
+
+
+    <root level="${LOG_LEVEL}">
+        <appender-ref ref="stdout"/>
+        <appender-ref ref="file.debug"/>
+        <appender-ref ref="file.info"/>
+        <appender-ref ref="file.warn"/>
+        <appender-ref ref="file.error"/>
+    </root>
+</configuration>

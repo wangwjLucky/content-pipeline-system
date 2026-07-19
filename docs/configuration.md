@@ -257,6 +257,8 @@ settings = Settings()  # 全局单例，各服务共享
 
 **Gateway 是唯一需要 AI API Key 的服务**，其他 Python 服务通过调用 Gateway 的 HTTP API 来使用 AI 能力。
 
+**Provider 注册表**：`gateway/providers/registry.py` 统一管理所有 Provider 实例，各 Router 通过 `get_providers()` / `get_provider()` 获取共享实例。`init_providers()` 初始化时调用每个 Provider 的 `refresh_models()` 动态拉取模型列表。所有 Provider 的 `chat()` 和 `generate()` 方法均为 `async def`，使用 `httpx.AsyncClient`。
+
 #### Script Service（`ai-services/script-service/.env`）
 
 | 变量                        | 用途            | 本地值                                     | Docker 值（覆盖）            |
@@ -481,6 +483,8 @@ docker compose up -d
 | `PIPELINE_ANTHROPIC_API_KEY` | `str`  | `""`                                     | gateway         | Anthropic API Key |
 | `PIPELINE_DEEPSEEK_API_KEY`  | `str`  | `""`                                     | gateway         | DeepSeek API Key  |
 | `PIPELINE_SENSENOVA_API_KEY` | `str`  | `""`                                     | gateway         | SenseNova API Key |
+| `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key |
+| `PIPELINE_DOUBAO_API_KEY`    | `str`  | `""`                                     | gateway         | 豆包 TTS API Key |
 | `PIPELINE_CALLBACK_TOKEN`    | `str`  | `pipeline-callback-token-change-in-prod` | 所有服务        | 回调认证令牌      |
 
 ### 7.2 Java 后端

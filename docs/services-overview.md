@@ -128,9 +128,24 @@ pipeline.callback-token=${CALLBACK_TOKEN}
 
 ```
 WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER → EDITING → REVIEW → READY → PUBLISHED
-  ↑                                                                                                       │
-  └────────────────────────────────── ERROR ──────────────────────────────────────────────────────────────┘
+  ↑        ↑             ↑              ↑             ↑           ↑          ↑       ↑                        │
+  │        │             │              │             │           │          │       │                        │
+  └────────┴─────────────┴──────────────┴─────────────┴───────────┴──────────┴───────┴────── ERROR ───────────┘
                                                                                                     CANCELLED (终态)
+
+允许的转换（含自循环和回退）：
+  WAIT         → WAIT(自循环) | SCRIPTING | CANCELLED
+  SCRIPTING    → SCRIPT_REVIEW | ERROR | CANCELLED
+  SCRIPT_REVIEW → STORYBOARD(批准) | SCRIPT_REVIEW(编辑) | WAIT(驳回) | CANCELLED
+  STORYBOARD   → GENERATING | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
+  GENERATING   → VOICEOVER | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
+  VOICEOVER    → VOICEOVER(素材就绪中) | EDITING | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
+  EDITING      → REVIEW | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
+  REVIEW       → READY(通过) | SCRIPT_REVIEW(脚本驳回) | WAIT(驳回) | CANCELLED
+  READY        → PUBLISHED | CANCELLED
+  PUBLISHED    → (终态)
+  CANCELLED    → (终态)
+  ERROR        → WAIT(重试) | CANCELLED
 ```
 
 ---
@@ -175,7 +190,11 @@ WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER
 | `/ai/v1/prompt/split` | POST | 分镜拆分 |
 | `/ai/v1/ffmpeg/compile` | POST | FFmpeg 合成 |
 
-**Provider 列表**：`OpenAIProvider`、`ClaudeProvider`、`DoubaoProvider`、`KelingProvider`、`VeoProvider`
+**Provider 列表**：`OpenAIProvider`、`ClaudeProvider`、`DeepSeekProvider`、`SenseNovaProvider`、`DoubaoProvider`、`KelingProvider`、`VeoProvider`
+
+**Provider 注册表**：所有 Provider 实例由 `gateway/providers/registry.py` 统一管理，所有 Router 通过 `get_providers()` / `get_provider()` 获取共享实例。`init_providers()` 初始化时调用每个 Provider 的 `refresh_models()` 动态拉取模型列表。
+
+**异步化**：所有 Provider 的 `chat()` 和 `generate()` 方法均为 `async def`，使用 `httpx.AsyncClient` 发送 HTTP 请求。Router 层通过 `await` 调用，避免阻塞事件循环。
 
 ### 3.2 Script Service（脚本生成）
 

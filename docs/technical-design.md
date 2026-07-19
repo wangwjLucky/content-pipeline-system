@@ -146,13 +146,25 @@ ai-services/
 ├── gateway/                # AI Gateway — 统一模型路由
 │   ├── main.py
 │   ├── routers/
+│   │   ├── chat.py
+│   │   ├── generate.py
+│   │   ├── models.py
+│   │   ├── script.py
+│   │   ├── prompt.py
+│   │   ├── image.py
+│   │   ├── video.py
+│   │   └── voice.py
 │   ├── providers/
+│   │   ├── base.py                 # 抽象基类（async def 定义）
+│   │   ├── registry.py             # 全局 Provider 注册表（共享实例）
 │   │   ├── openai_provider.py
 │   │   ├── claude_provider.py
+│   │   ├── deepseek_provider.py
+│   │   ├── sensenova_provider.py
 │   │   ├── keling_provider.py
 │   │   ├── veo_provider.py
 │   │   └── doubao_provider.py
-│   └── models/
+│   └── __init__.py
 ├── script-service/         # 脚本生成服务
 │   ├── main.py
 │   └── generators/
@@ -280,18 +292,21 @@ ai-services/
 ### 4.2 任务状态机 (task_status)
 
 ```
-WAIT         → SCRIPTING      | ERROR
-SCRIPTING    → SCRIPT_REVIEW  | ERROR
-SCRIPT_REVIEW → STORYBOARD    | WAIT (驳回 → 人工编辑后可重试)
-STORYBOARD   → GENERATING     | ERROR
-GENERATING   → VOICEOVER      | ERROR
-VOICEOVER    → EDITING        | ERROR
-EDITING      → REVIEW         | ERROR
-REVIEW       → READY          | WAIT (驳回)
-READY        → PUBLISHED      | ERROR
+WAIT         → SCRIPTING              | CANCELLED
+SCRIPTING    → SCRIPT_REVIEW          | ERROR | CANCELLED
+SCRIPT_REVIEW → STORYBOARD (批准)     | SCRIPT_REVIEW (编辑) | WAIT (驳回) | CANCELLED
+STORYBOARD   → GENERATING             | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
+GENERATING   → VOICEOVER              | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
+VOICEOVER    → VOICEOVER (素材就绪中)  | EDITING | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
+EDITING      → REVIEW                 | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
+REVIEW       → READY (通过)            | SCRIPT_REVIEW (脚本驳回) | WAIT (驳回) | CANCELLED
+READY        → PUBLISHED              | CANCELLED
 PUBLISHED    → (终态)
-ERROR        → (任意前置状态，手动重试后回退)
+CANCELLED    → (终态)
+ERROR        → WAIT (重试)            | CANCELLED
 ```
+
+注意：`SCRIPT_REVIEW` 和 `VOICEOVER` 支持自循环（编辑/素材就绪中场景），`STORYBOARD` 及后续状态支持回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核）。
 
 ### 4.3 核心 SQL 示例
 
@@ -435,8 +450,10 @@ POST   /api/v1/platform-accounts          # 平台账号管理
 ```
 # AI Gateway — 统一模型调用
 POST   /ai/v1/chat               # LLM 对话
+POST   /ai/v1/chat/{provider}    # 按 Provider 调用
 POST   /ai/v1/generate           # 通用生成
 POST   /ai/v1/embedding          # 向量化
+GET    /ai/v1/models             # 模型列表（按 Provider 分组）
 
 # 脚本生成服务
 POST   /ai/v1/script/generate    # 生成脚本

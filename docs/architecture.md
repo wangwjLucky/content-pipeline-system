@@ -89,10 +89,13 @@ Python 服务回调 Java 时携带 `X-Callback-Token` 头，Java 端验证令牌
 
 ```
 WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER → EDITING → REVIEW → READY → PUBLISHED
-  ↑                                                                                                       │
-  └───────────────────────────────────── ERROR ───────────────────────────────────────────────────────────┘
+  ↑        ↑             ↑              ↑             ↑           ↑          ↑       ↑                        │
+  │        │             │              │             │           │          │       │                        │
+  └────────┴─────────────┴──────────────┴─────────────┴───────────┴──────────┴───────┴────── ERROR ───────────┘
                                                                                                     CANCELLED (终态)
 ```
+
+支持自循环和回退：`SCRIPT_REVIEW` 可自循环（编辑），`VOICEOVER` 可自循环（素材就绪中），`STORYBOARD` 及后续状态可回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核）。
 
 | 状态 | 说明 | 进度 |
 |------|------|------|

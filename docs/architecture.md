@@ -1,6 +1,6 @@
 # 内容生产流水线系统 — 架构总览
 
-> 版本：v1.0 | 日期：2026-07-17
+> 版本：v1.1 | 日期：2026-07-19
 
 ---
 
@@ -89,28 +89,47 @@ Python 服务回调 Java 时携带 `X-Callback-Token` 头，Java 端验证令牌
 
 ```
 WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER → EDITING → REVIEW → READY → PUBLISHED
-  ↑        ↑             ↑              ↑             ↑           ↑          ↑       ↑                        │
-  │        │             │              │             │           │          │       │                        │
-  └────────┴─────────────┴──────────────┴─────────────┴───────────┴──────────┴───────┴────── ERROR ───────────┘
-                                                                                                    CANCELLED (终态)
+  ↑                                                                                          ↑                  │
+  │                                                                                          │                  │
+  └───────────────────────────────── ERROR ──────────────────────────────────────────────────┘                  │
+                                                                                                          CANCELLED (终态)
 ```
 
-支持自循环和回退：`SCRIPT_REVIEW` 可自循环（编辑），`VOICEOVER` 可自循环（素材就绪中），`STORYBOARD` 及后续状态可回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核）。
+支持自循环和回退：`VOICEOVER` 可自循环（素材就绪中），`STORYBOARD`、`GENERATING`、`VOICEOVER` 可回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核），`SCRIPT_REVIEW` 驳回后回到 `WAIT` 重新开始。
 
 | 状态 | 说明 | 进度 |
 |------|------|------|
 | `WAIT` | 等待中 | 0% |
 | `SCRIPTING` | 脚本生成中 | 10% |
-| `SCRIPT_REVIEW` | 脚本审核 | 30% |
+| `SCRIPT_REVIEW` | 脚本审核中 | 30% |
 | `STORYBOARD` | 分镜生成中 | 40% |
-| `GENERATING` | 视频/图片生成中 | 50% |
+| `GENERATING` | 视频/图片素材生成中 | 50% |
 | `VOICEOVER` | 配音生成中 | 60% |
 | `EDITING` | 剪辑合成中 | 80% |
-| `REVIEW` | 成片审核 | 95% |
+| `REVIEW` | 成片审核中 | 95% |
 | `READY` | 待发布 | 95% |
 | `PUBLISHED` | 已发布 | 100% |
 | `CANCELLED` | 已取消 | — |
 | `ERROR` | 处理失败 | — |
+
+### 3.1 允许的状态转换（来自 `TaskStateMachine.java`）
+
+| 当前状态 | 允许转换到 |
+|---------|-----------|
+| `WAIT` | `WAIT`(自循环), `SCRIPTING`, `CANCELLED` |
+| `SCRIPTING` | `SCRIPT_REVIEW`, `ERROR`, `CANCELLED` |
+| `SCRIPT_REVIEW` | `STORYBOARD`(脚本批准), `WAIT`(脚本驳回), `CANCELLED` |
+| `STORYBOARD` | `GENERATING`, `SCRIPT_REVIEW`(脚本驳回), `ERROR`, `CANCELLED` |
+| `GENERATING` | `VOICEOVER`, `SCRIPT_REVIEW`(脚本驳回), `ERROR`, `CANCELLED` |
+| `VOICEOVER` | `VOICEOVER`(自循环,素材就绪中), `EDITING`, `SCRIPT_REVIEW`(脚本驳回), `ERROR`, `CANCELLED` |
+| `EDITING` | `REVIEW`, `ERROR`, `CANCELLED` |
+| `REVIEW` | `READY`(审核通过), `WAIT`(驳回), `CANCELLED` |
+| `READY` | `PUBLISHED`, `CANCELLED` |
+| `PUBLISHED` | (终态，无出站转换) |
+| `CANCELLED` | (终态，无出站转换) |
+| `ERROR` | `WAIT`(重试), `CANCELLED` |
+
+> **注意**：`STORYBOARD` 及后续状态（`GENERATING`, `VOICEOVER`）支持回退到 `SCRIPT_REVIEW`，这是脚本被驳回后重新审核的场景。`SCRIPT_REVIEW` 驳回后进入 `WAIT`，`REVIEW` 驳回后也进入 `WAIT`，均需重新从脚本生成开始。`EDITING` 不支持直接回退到 `SCRIPT_REVIEW`。
 
 ---
 

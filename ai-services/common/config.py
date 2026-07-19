@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     sensenova_api_key: str = ""
     keling_api_key: str = ""
     doubao_api_key: str = ""
+    veo_api_key: str = ""
 
     # 回调认证
     callback_token: str = "pipeline-callback-token-change-in-prod"

@@ -31,7 +31,7 @@ class DeepSeekProvider(BaseProvider):
         self.api_key = api_key
         self.endpoint = endpoint.rstrip("/")
         self._http_client = httpx.AsyncClient(timeout=120)
-        self._supported_models = list(_FALLBACK_MODELS)
+        self._supported_models = list(_FALLBACK_MODELS) if api_key else []
 
     @property
     def name(self) -> str:
@@ -43,7 +43,7 @@ class DeepSeekProvider(BaseProvider):
     async def refresh_models(self) -> None:
         """从 DeepSeek API 实时拉取模型列表"""
         if not self.api_key:
-            logger.info("DeepSeek API Key 未配置，使用兜底模型列表")
+            logger.info("DeepSeek API Key 未配置，跳过模型列表加载")
             return
 
         logger.info("正在从 DeepSeek API 拉取模型列表...")

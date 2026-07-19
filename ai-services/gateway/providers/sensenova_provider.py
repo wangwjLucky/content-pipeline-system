@@ -1,4 +1,10 @@
-"""SenseNova（商汤大装置）Provider —— 接入 token.sensenova.cn API。"""
+"""SenseNova（商汤大装置）Provider —— 接入 token.sensenova.cn API。
+
+模型列表获取策略：
+  1. 启动时通过 GET /v1/models 从 API 动态拉取（需配置 API Key）
+  2. 拉取失败时回退到硬编码兜底列表
+  3. API Key 未配置时模型列表为空
+"""
 
 import json
 from typing import Any
@@ -7,6 +13,14 @@ from gateway.providers.base import BaseProvider
 from common.logging import setup_logging
 
 logger = setup_logging("sensenova_provider")
+
+# 兜底模型列表（API 拉取失败时使用）
+_FALLBACK_MODELS = [
+    "sensenova-6.7-flash-lite",
+    "sensenova-u1-fast",
+    "deepseek-v4-flash",
+    "glm-5.2",
+]
 
 
 class SenseNovaProvider(BaseProvider):
@@ -31,12 +45,7 @@ class SenseNovaProvider(BaseProvider):
         self.api_key = api_key
         self.endpoint = endpoint or "https://token.sensenova.cn/v1"
         self._http_client = httpx.AsyncClient(timeout=120)
-        self._supported_models = [
-            "sensenova-6.7-flash-lite",   # 轻量多模态，支持文本+图像
-            "sensenova-u1-fast",          # U1 加速版（使用 /v1/images/generations）
-            "deepseek-v4-flash",          # DeepSeek 高性能对话（通过 SenseNova 接入）
-            "glm-5.2",                    # 智谱 GLM-5.2（通过 SenseNova 接入）
-        ]
+        self._supported_models = list(_FALLBACK_MODELS) if api_key else []
 
     @property
     def name(self) -> str:
@@ -44,6 +53,37 @@ class SenseNovaProvider(BaseProvider):
 
     async def close(self) -> None:
         await self._http_client.aclose()
+
+    async def refresh_models(self) -> None:
+        """从 SenseNova API 实时拉取模型列表"""
+        if not self.api_key:
+            logger.info("SenseNova API Key 未配置，跳过模型列表加载")
+            return
+
+        logger.info("正在从 SenseNova API 拉取模型列表...")
+        try:
+            response = await self._http_client.get(
+                f"{self.endpoint}/models",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            # OpenAI 兼容格式: {"object":"list","data":[{"id":"sensenova-6.7-flash-lite",...}]}
+            models_raw = data.get("data", [])
+            fetched = [m["id"] for m in models_raw if isinstance(m, dict) and m.get("id")]
+
+            if fetched:
+                self._supported_models = fetched
+                logger.info(f"SenseNova 模型列表刷新成功: {len(fetched)} 个模型")
+            else:
+                logger.warning("SenseNova API 返回的模型列表为空，保留兜底列表")
+        except Exception as e:
+            logger.warning(f"SenseNova 模型列表拉取失败: {e}，使用兜底列表")
 
     async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         """AI 对话（OpenAI 兼容格式）

@@ -1,4 +1,10 @@
-"""OpenAI 模型 Provider —— 真实 API 调用（兼容 OpenAI 接口格式）。"""
+"""OpenAI 模型 Provider —— 真实 API 调用（兼容 OpenAI 接口格式）。
+
+模型列表获取策略：
+  1. 启动时通过 GET /v1/models 从 API 动态拉取（需配置 API Key）
+  2. 拉取失败时回退到硬编码兜底列表
+  3. API Key 未配置时模型列表为空
+"""
 
 import json
 from typing import Any
@@ -7,6 +13,9 @@ from gateway.providers.base import BaseProvider
 from common.logging import setup_logging
 
 logger = setup_logging("openai_provider")
+
+# 兜底模型列表（API 拉取失败时使用）
+_FALLBACK_MODELS = ["gpt-4o", "gpt-4.1", "gpt-4o-mini", "gpt-3.5-turbo"]
 
 
 class OpenAIProvider(BaseProvider):
@@ -17,7 +26,7 @@ class OpenAIProvider(BaseProvider):
         self.api_key = api_key
         self.endpoint = endpoint or "https://api.openai.com/v1"
         self._http_client = httpx.AsyncClient(timeout=120)
-        self._supported_models = ["gpt-4o", "gpt-4.1", "gpt-4o-mini", "gpt-3.5-turbo"]
+        self._supported_models = list(_FALLBACK_MODELS) if api_key else []
 
     @property
     def name(self) -> str:
@@ -25,6 +34,37 @@ class OpenAIProvider(BaseProvider):
 
     async def close(self) -> None:
         await self._http_client.aclose()
+
+    async def refresh_models(self) -> None:
+        """从 OpenAI API 实时拉取模型列表"""
+        if not self.api_key:
+            logger.info("OpenAI API Key 未配置，跳过模型列表加载")
+            return
+
+        logger.info("正在从 OpenAI API 拉取模型列表...")
+        try:
+            response = await self._http_client.get(
+                f"{self.endpoint}/models",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            # OpenAI 格式: {"object":"list","data":[{"id":"gpt-4o",...}]}
+            models_raw = data.get("data", [])
+            fetched = [m["id"] for m in models_raw if isinstance(m, dict) and m.get("id")]
+
+            if fetched:
+                self._supported_models = fetched
+                logger.info(f"OpenAI 模型列表刷新成功: {len(fetched)} 个模型")
+            else:
+                logger.warning("OpenAI API 返回的模型列表为空，保留兜底列表")
+        except Exception as e:
+            logger.warning(f"OpenAI 模型列表拉取失败: {e}，使用兜底列表")
 
     async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         model = kwargs.get("model", "gpt-4o")

@@ -54,7 +54,7 @@ def init_providers() -> None:
         SenseNovaProvider(api_key=settings.sensenova_api_key),
         KelingProvider(api_key=settings.keling_api_key),
         DoubaoProvider(api_key=settings.doubao_api_key),
-        VeoProvider(),
+        VeoProvider(api_key=settings.veo_api_key),
     ]
     _providers_by_name = {p.name: p for p in _all_providers}
     _initialized = True

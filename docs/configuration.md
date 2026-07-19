@@ -1,5 +1,7 @@
 # 内容生产流水线系统 — 配置体系文档
 
+> 版本：v1.1 | 日期：2026-07-19
+
 ---
 
 ## 目录
@@ -57,22 +59,54 @@
 ### 2.1 Python 服务（以 Gateway 为例）
 
 ```
-docker-compose.yml                     Dockerfile                      Python
-─────────────────                     ──────────                      ──────
-env_file: ./ai-services/gateway/.env   CMD: uvicorn gateway.main:app    Pydantic Settings
-  └─ PIPELINE_DEEPSEEK_API_KEY=xxx          ↓                          settings.deepseek_api_key
-environment:                                                          model_config = {
-  └─ PIPELINE_RABBITMQ_HOST=rabbitmq       容器进程环境变量                env_prefix = "PIPELINE_",
-                                                                        env_file = ".env"
-                                                                      }
+┌──────────────────────────────┐     ┌──────────────────┐     ┌──────────────────────┐
+│     docker-compose.yml       │     │    Dockerfile     │     │       Python         │
+├──────────────────────────────┤     ├──────────────────┤     ├──────────────────────┤
+│ env_file:                    │     │                  │     │ Pydantic Settings    │
+│   ./ai-services/gateway/.env │─────│ CMD: uvicorn     │────▶│ settings.deepseek_   │
+│   └─ PIPELINE_DEEPSEEK...   │     │   gateway.main   │     │   api_key = "xxx"    │
+│                              │     │                  │     │                      │
+│ environment:                 │     │  容器进程环境变量  │     │ model_config = {     │
+│   PIPELINE_RABBITMQ_HOST     │────▶│  (docker-compose  │     │   env_prefix =       │
+│   = rabbitmq                 │     │   注入环境变量)   │     │     "PIPELINE_",     │
+│                              │     │                  │     │   env_file = ".env"  │
+│                              │     │                  │     │ }                    │
+└──────────────────────────────┘     └──────────────────┘     └──────────────────────┘
 ```
 
 **关键机制：**
 
 - Pydantic Settings 的 `env_file = ".env"` 是 **相对路径**，从进程工作目录（CWD）解析
-- 本地开发时：`cd ai-services/gateway && python main.py` → 读取 `gateway/.env`
+- 本地开发时（推荐）：`cd ai-services && python -m gateway.main` → 读取 `ai-services/.env`（**注意**：不是 `gateway/.env`）
+- 本地开发时（备选）：`cd ai-services/gateway && python main.py` → 读取 `gateway/.env`（但 `common` 包不在路径中，需额外设置 `PYTHONPATH`）
 - Docker 部署时：`env_file` 将 `.env` 注入容器，`environment` 覆盖特定变量
 - `env_prefix = "PIPELINE_"` 表示环境变量需以 `PIPELINE_` 开头
+
+> **⚠️ 本地开发常见问题**：`Settings()` 从**当前工作目录**查找 `.env` 文件，不是从 `common/config.py` 所在目录。
+> 因此：
+> - 运行 `cd ai-services && python -m gateway.main` → 需要 `ai-services/.env`
+> - 运行 `cd ai-services/gateway && python main.py` → 需要 `ai-services/gateway/.env`（不推荐，`common` 模块找不到）
+>
+> 推荐做法：**在 `ai-services/` 目录下创建 `.env`**，包含 API Key 等配置：
+
+```bash
+cd ai-services
+# 从 gateway/.env 提取 API Key 配置到 ai-services/.env
+python -c "
+with open('gateway/.env') as f:
+    lines = [l for l in f if 'PIPELINE_' in l and ('KEY' in l or 'API' in l)]
+with open('.env', 'w') as f:
+    f.writelines(lines)
+"
+```
+
+**验证配置是否生效**：
+
+```bash
+cd ai-services
+python -c "from common.config import settings; print(f'deepseek={settings.deepseek_api_key!r}')"
+# 输出应为：deepseek='sk-xxx'
+```
 
 #### `environment` vs `env_file` 实际解析
 
@@ -223,6 +257,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     deepseek_api_key: str = ""
     sensenova_api_key: str = ""
+    keling_api_key: str = ""
+    doubao_api_key: str = ""
+    veo_api_key: str = ""
 
     # 回调认证
     callback_token: str = "pipeline-callback-token-change-in-prod"
@@ -251,6 +288,9 @@ settings = Settings()  # 全局单例，各服务共享
 | `PIPELINE_OPENAI_API_KEY`    | OpenAI API Key             | （空）                                     | （空）                                           |
 | `PIPELINE_ANTHROPIC_API_KEY` | Anthropic API Key          | （空）                                     | （空）                                           |
 | `PIPELINE_SENSENOVA_API_KEY` | SenseNova API Key          | `sk-xxx`                                 | `sk-xxx`                                       |
+| `PIPELINE_KELING_API_KEY`   | 可灵 AI 视频生成 API Key   | `sk-xxx`                                 | `sk-xxx`                                       |
+| `PIPELINE_DOUBAO_API_KEY`   | 豆包 TTS API Key           | `sk-xxx`                                 | `sk-xxx`                                       |
+| `PIPELINE_VEO_API_KEY`     | Google Veo 视频生成 API Key | `sk-xxx`                                 | `sk-xxx`                                       |
 | `PIPELINE_GATEWAY_URL`       | 自身地址（供其他服务调用） | `http://ai-gateway:8001`                 | `http://ai-gateway:8001`                       |
 | `PIPELINE_CALLBACK_TOKEN`    | 回调认证令牌               | `pipeline-callback-token-change-in-prod` | 由`${CALLBACK_TOKEN}` 注入                     |
 | `PIPELINE_DEBUG`             | 调试模式                   | `false`                                  | `false`                                        |
@@ -485,6 +525,8 @@ docker compose up -d
 | `PIPELINE_SENSENOVA_API_KEY` | `str`  | `""`                                     | gateway         | SenseNova API Key |
 | `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key |
 | `PIPELINE_DOUBAO_API_KEY`    | `str`  | `""`                                     | gateway         | 豆包 TTS API Key |
+| `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key |
+| `PIPELINE_VEO_API_KEY`       | `str`  | `""`                                     | gateway         | Google Veo 视频生成 API Key |
 | `PIPELINE_CALLBACK_TOKEN`    | `str`  | `pipeline-callback-token-change-in-prod` | 所有服务        | 回调认证令牌      |
 
 ### 7.2 Java 后端
@@ -521,14 +563,27 @@ docker compose up -d
 
 ### Q: 本地开发时，配置没生效怎么办？
 
-**答：** 确保你在服务自己的目录下运行：
+**答：** 确保 `.env` 文件在当前工作目录下。`Settings()` 从 CWD 查找 `.env`，不是从 `config.py` 所在目录：
 
 ```bash
-# ✅ 正确
-cd ai-services/gateway && python main.py
+# ✅ 推荐：从 ai-services 目录运行，需要 ai-services/.env
+cd ai-services
+python -m gateway.main
 
-# ❌ 错误（读不到 /gateway/.env）
-cd ai-services && python gateway/main.py
+# 如果 ai-services/.env 不存在，可以从 gateway/.env 提取配置：
+cd ai-services
+python -c "
+with open('gateway/.env') as f:
+    lines = [l for l in f if 'PIPELINE_' in l and ('KEY' in l or 'API' in l)]
+with open('.env', 'w') as f:
+    f.writelines(lines)
+"
+
+# 或直接设置环境变量（临时生效）
+$env:PIPELINE_DEEPSEEK_API_KEY = "sk-xxx"
+
+# 验证配置
+python -c "from common.config import settings; print(f'deepseek={settings.deepseek_api_key!r}')"
 ```
 
 ### Q: Docker 部署时，为什么还要 `environment` 覆盖 `env_file`？

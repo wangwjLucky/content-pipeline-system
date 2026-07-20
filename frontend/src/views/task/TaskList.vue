@@ -8,6 +8,9 @@
     </template>
     <a-table :dataSource="tasks" :columns="columns" :loading="loading" rowKey="id" :pagination="{ current: page, pageSize: size, total, onChange: load }">
       <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'contentType'">
+          <a-tag>{{ typeLabel(record.contentType) }}</a-tag>
+        </template>
         <template v-if="column.key === 'status'">
           <a-tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</a-tag>
         </template>
@@ -43,6 +46,7 @@ const statuses = ['WAIT', 'SCRIPTING', 'SCRIPT_REVIEW', 'STORYBOARD', 'GENERATIN
 const columns = [
   { title: 'ID', dataIndex: 'id', width: 80 },
   { title: '标题', dataIndex: 'title' },
+  { title: '类型', dataIndex: 'contentType', key: 'contentType', width: 80 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
   { title: '进度', dataIndex: 'progress', width: 80 },
   { title: '创建时间', dataIndex: 'createdAt', width: 180 },
@@ -52,6 +56,11 @@ const columns = [
 function statusColor(s: string) {
   const map: Record<string, string> = { WAIT: 'orange', SCRIPTING: 'blue', SCRIPT_REVIEW: 'purple', STORYBOARD: 'geekblue', GENERATING: 'blue', VOICEOVER: 'cyan', EDITING: 'processing', REVIEW: 'purple', READY: 'green', PUBLISHED: 'green', CANCELLED: 'default', ERROR: 'red' }
   return map[s] || 'default'
+}
+
+function typeLabel(s: string) {
+  const map: Record<string, string> = { video: '视频', text: '文案', image: '图片', image_text: '图文' }
+  return map[s] || s
 }
 
 function statusLabel(s: string) {

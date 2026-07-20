@@ -182,8 +182,14 @@ public class CallbackController {
                         materialMapper.updateById(m);
                     }
                 }
-                taskService.updateStatus(task.getId(), "VOICEOVER", 60, null);
-                log.info("图片生成完成: taskId={}（若任务已处于 VOICEOVER 状态，表示另一素材仍在处理中）", task.getId());
+                // 纯图片/图文：图片生成完成后直接进入 REVIEW
+                if ("image".equals(task.getContentType()) || "image_text".equals(task.getContentType())) {
+                    taskService.updateStatus(task.getId(), "REVIEW", 95, null);
+                    log.info("图片生成完成（图文/纯图片）: taskId={}", task.getId());
+                } else {
+                    taskService.updateStatus(task.getId(), "VOICEOVER", 60, null);
+                    log.info("图片生成完成: taskId={}（若任务已处于 VOICEOVER 状态，表示另一素材仍在处理中）", task.getId());
+                }
             }
             case "voice" -> {
                 String voiceUrl = data != null ? (String) data.get("url") : null;

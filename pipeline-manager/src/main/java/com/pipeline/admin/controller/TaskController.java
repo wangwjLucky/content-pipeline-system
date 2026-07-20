@@ -40,7 +40,7 @@ public class TaskController {
     @OperationLog(module = "任务管理", action = "创建")
     @PostMapping
     public Result<Task> create(@RequestBody Task task) {
-        Task created = taskService.createTask(task.getTopicId(), task.getTitle());
+        Task created = taskService.createTask(task.getTopicId(), task.getTitle(), task.getContentType());
         return Result.success(created);
     }
 

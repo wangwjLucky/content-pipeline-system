@@ -2,6 +2,9 @@
   <a-card :title="`任务详情 #${task?.id}`" :loading="loading">
     <a-descriptions v-if="task" bordered :column="2">
       <a-descriptions-item label="标题">{{ task.title }}</a-descriptions-item>
+      <a-descriptions-item label="类型">
+        <a-tag>{{ typeLabel(task.contentType) }}</a-tag>
+      </a-descriptions-item>
       <a-descriptions-item label="状态">
         <a-tag :color="statusColor(task.status)">{{ statusLabel(task.status) }}</a-tag>
       </a-descriptions-item>
@@ -27,7 +30,8 @@
       <a-space>
         <a-button v-if="task?.status === 'ERROR'" @click="handleRetry">重试</a-button>
         <a-button v-if="task?.scriptId" @click="$router.push(`/scripts/${task.scriptId}`)">查看脚本</a-button>
-        <a-button v-if="task?.status === 'STORYBOARD'" @click="$router.push(`/storyboards/${task.id}`)">编辑分镜</a-button>
+        <a-button v-if="task?.status === 'STORYBOARD' && task?.contentType !== 'text'" @click="$router.push(`/storyboards/${task.id}`)">编辑分镜</a-button>
+        <a-button v-if="task?.status === 'READY'" @click="$router.push('/publish')">去发布</a-button>
         <a-button v-if="!['PUBLISHED', 'CANCELLED'].includes(task?.status)" danger @click="handleCancel">取消任务</a-button>
       </a-space>
     </template>
@@ -46,6 +50,11 @@ const router = useRouter()
 const task = ref<any>(null)
 const timeline = ref<any[]>([])
 const loading = ref(false)
+
+function typeLabel(s: string) {
+  const map: Record<string, string> = { video: '视频', text: '文案', image: '图片', image_text: '图文' }
+  return map[s] || s
+}
 
 function statusColor(s: string) {
   const map: Record<string, string> = { WAIT: 'orange', SCRIPTING: 'blue', SCRIPT_REVIEW: 'purple', STORYBOARD: 'geekblue', GENERATING: 'blue', VOICEOVER: 'cyan', EDITING: 'processing', REVIEW: 'purple', READY: 'green', PUBLISHED: 'green', CANCELLED: 'default', ERROR: 'red' }

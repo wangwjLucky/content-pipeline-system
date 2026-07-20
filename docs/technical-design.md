@@ -1,8 +1,8 @@
 # 内容生产流水线系统 — 技术设计方案
 
-> 版本：v1.1
-> 日期：2026-07-19
-> 状态：已更新（同步代码 v1.1）
+> 版本：v1.2
+> 日期：2026-07-20
+> 状态：已更新（同步代码 v1.2）
 
 ---
 
@@ -852,3 +852,56 @@ covers/123/20260716_cover.png
 | `IllegalArgumentException`        | 400         | 参数非法（如任务不存在）        |
 | `IllegalStateException`           | 400         | 状态机非法转换                  |
 | `Exception`（兜底）               | 500         | 未捕获的服务器内部错误          |
+
+---
+
+## 11. 内容产出方式
+
+### 11.1 概述
+
+当前系统只支持视频生产流水线。新增内容产出方式，让同一套选题/脚本流程可以产出不同形态的内容：
+
+| 产出方式 | 产出内容 | 生产流程 |
+|----------|----------|----------|
+| `video` | 完整视频 | 选题→脚本→分镜→素材→配音→剪辑→发布（现有流程） |
+| `text` | 文案/脚本文字 | 选题→脚本→审核→发布 |
+| `image` | 信息图/海报 | 选题→脚本→分镜→图片生成→发布 |
+| `image_text` | 图片+文案 | 选题→脚本→分镜→图片生成→排版→发布 |
+
+### 11.2 数据模型
+
+Task 实体新增 `content_type` 字段：
+
+```sql
+ALTER TABLE task ADD COLUMN content_type VARCHAR(20) NOT NULL DEFAULT 'video';
+```
+
+### 11.3 状态机
+
+不同 content_type 走不同状态路径：
+
+```
+text:       WAIT → SCRIPTING → SCRIPT_REVIEW → READY → PUBLISHED
+image:      WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → REVIEW → READY → PUBLISHED
+image_text: WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → EDITING → REVIEW → READY → PUBLISHED
+video:      WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER → EDITING → REVIEW → READY → PUBLISHED
+```
+
+关键变更：
+- `SCRIPT_REVIEW → READY` 新增转换（纯文案审核通过后直达待发布）
+- `GENERATING → REVIEW` 图片/图文模式（素材生成后直接进入终审，跳过配音和剪辑）
+
+### 11.4 回调处理
+
+`CallbackController.handleSuccess()` 根据 `task.contentType` 分支：
+
+- **prompt 回调**：`image`/`image_text` 只触发图片生成 MQ，不触发视频
+- **image 回调**：`image`/`image_text` 直接进入 REVIEW，`video` 进入 VOICEOVER
+- **video 回调**：仅 `video` 类型处理
+- **voice 回调**：仅 `video` 类型处理
+
+### 11.5 前端适配
+
+- 任务列表新增"类型"列，显示视频/文案/图片/图文标签
+- 选题列表创建任务时弹出产出方式选择器
+- 任务详情根据 content_type 动态显示操作按钮（纯文案不显示分镜按钮等）

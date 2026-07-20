@@ -36,9 +36,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { getTopics, createTopic } from '../../api/topic'
 import { createTask } from '../../api/task'
 
@@ -92,9 +92,28 @@ async function handleCreate() {
 }
 
 async function goCreateTask(record: any) {
-  await createTask({ topicId: record.id, title: record.title })
-  message.success('任务已创建')
-  router.push('/tasks')
+  let ct = 'video'
+  Modal.confirm({
+    title: '创建任务',
+    content: h('div', [
+      h('p', '选择内容产出方式：'),
+      h('a-select', {
+        defaultValue: 'video',
+        style: 'width: 100%',
+        onChange: (v: string) => { ct = v },
+      }, [
+        h('a-select-option', { value: 'video' }, '视频'),
+        h('a-select-option', { value: 'text' }, '纯文案'),
+        h('a-select-option', { value: 'image' }, '纯图片'),
+        h('a-select-option', { value: 'image_text' }, '图文'),
+      ]),
+    ]),
+    onOk: async () => {
+      await createTask({ topicId: record.id, title: record.title, contentType: ct })
+      message.success('任务已创建')
+      router.push('/tasks')
+    },
+  })
 }
 
 onMounted(() => load())

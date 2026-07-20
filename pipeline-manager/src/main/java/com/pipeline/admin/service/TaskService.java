@@ -7,6 +7,7 @@ import java.util.List;
 
 public interface TaskService {
     Task createTask(Long topicId, String title);
+    Task createTask(Long topicId, String title, String contentType);
 
     /**
      * 更新任务状态，校验状态机合法性并记录事件。

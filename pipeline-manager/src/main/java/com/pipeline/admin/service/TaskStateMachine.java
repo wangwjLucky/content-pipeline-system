@@ -46,7 +46,7 @@ public class TaskStateMachine {
     private static final Map<String, Set<String>> TRANSITIONS = Map.ofEntries(
             entry("WAIT", Set.of("WAIT", "SCRIPTING", "CANCELLED")),
             entry("SCRIPTING", Set.of("SCRIPT_REVIEW", "ERROR", "CANCELLED")),
-            entry("SCRIPT_REVIEW", Set.of("STORYBOARD", "SCRIPT_REVIEW", "WAIT", "CANCELLED")),
+            entry("SCRIPT_REVIEW", Set.of("STORYBOARD", "SCRIPT_REVIEW", "WAIT", "READY", "CANCELLED")),
             entry("STORYBOARD", Set.of("GENERATING", "SCRIPT_REVIEW", "ERROR", "CANCELLED")),
             entry("GENERATING", Set.of("VOICEOVER", "SCRIPT_REVIEW", "ERROR", "CANCELLED")),
             entry("VOICEOVER", Set.of("VOICEOVER", "EDITING", "SCRIPT_REVIEW", "ERROR", "CANCELLED")),

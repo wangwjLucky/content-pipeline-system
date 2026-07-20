@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS task (
     topic_id      BIGINT REFERENCES topic(id),
     title         VARCHAR(200) NOT NULL,
     script_id     BIGINT,
+    content_type  VARCHAR(20) NOT NULL DEFAULT 'video',
     status        VARCHAR(20) NOT NULL DEFAULT 'WAIT',
     progress      INT DEFAULT 0,
     error_message TEXT,

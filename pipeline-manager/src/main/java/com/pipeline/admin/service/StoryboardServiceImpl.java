@@ -38,6 +38,12 @@ public class StoryboardServiceImpl implements StoryboardService {
         storyboardMapper.delete(new LambdaQueryWrapper<Storyboard>()
                 .eq(Storyboard::getTaskId, taskId));
         // 批量插入并为每个分镜创建素材记录
+        String mediaType = "video";
+        Task task = taskMapper.selectById(taskId);
+        if (task != null && "image".equals(task.getContentType())) {
+            mediaType = "image";
+        }
+
         for (int i = 0; i < storyboards.size(); i++) {
             Storyboard sb = storyboards.get(i);
             sb.setTaskId(taskId);
@@ -47,23 +53,28 @@ public class StoryboardServiceImpl implements StoryboardService {
             Material material = new Material();
             material.setTaskId(taskId);
             material.setStoryboardId(sb.getId());
-            material.setType("video");
+            material.setType(mediaType);
             material.setPrompt(sb.getAiPrompt());
             material.setStatus("PENDING");
             materialMapper.insert(material);
         }
         log.info("分镜批量保存完成: taskId={}, count={}, 素材记录已创建", taskId, storyboards.size());
 
-        // 推进任务到 GENERATING，触发素材生成
-        Task task = taskMapper.selectById(taskId);
+        // 推进任务到 GENERATING，根据 content_type 触发对应素材生成
         if (task != null && "STORYBOARD".equals(task.getStatus())) {
             taskService.updateStatus(taskId, "GENERATING", 50, null);
+            String ct = task.getContentType();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    aiService.sendVideoGenerate(taskId, Map.of("taskId", taskId));
-                    aiService.sendImageGenerate(taskId, Map.of("taskId", taskId));
-                    log.info("素材生成已触发: taskId={}", taskId);
+                    if ("image".equals(ct) || "image_text".equals(ct)) {
+                        aiService.sendImageGenerate(taskId, Map.of("taskId", taskId));
+                        log.info("图片素材生成已触发: taskId={}", taskId);
+                    } else {
+                        aiService.sendVideoGenerate(taskId, Map.of("taskId", taskId));
+                        aiService.sendImageGenerate(taskId, Map.of("taskId", taskId));
+                        log.info("素材生成已触发: taskId={}", taskId);
+                    }
                 }
             });
         }

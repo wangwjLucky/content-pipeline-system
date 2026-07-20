@@ -8,7 +8,7 @@ export function getTask(id: number) {
   return request.get(`/tasks/${id}`)
 }
 
-export function createTask(data: { topicId: number; title: string }) {
+export function createTask(data: { topicId: number; title: string; contentType?: string }) {
   return request.post('/tasks', data)
 }
 

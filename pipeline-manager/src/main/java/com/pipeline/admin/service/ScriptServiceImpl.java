@@ -68,6 +68,15 @@ public class ScriptServiceImpl implements ScriptService {
         script.setStatus("APPROVED");
         scriptMapper.updateById(script);
 
+        // 根据内容产出方式决定下一步
+        Task task = taskMapper.selectById(script.getTaskId());
+        if (task != null && "text".equals(task.getContentType())) {
+            // 纯文案：审核通过后直接进入 READY
+            taskService.updateStatus(script.getTaskId(), "READY", 95, null);
+            log.info("纯文案脚本已批准，进入待发布: scriptId={}, taskId={}", scriptId, script.getTaskId());
+            return;
+        }
+
         // 推进任务到 STORYBOARD
         taskService.updateStatus(script.getTaskId(), "STORYBOARD", 40, null);
 

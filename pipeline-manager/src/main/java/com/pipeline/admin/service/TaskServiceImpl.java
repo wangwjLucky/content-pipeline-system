@@ -27,9 +27,16 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public Task createTask(Long topicId, String title) {
+        return createTask(topicId, title, "video");
+    }
+
+    @Override
+    @Transactional
+    public Task createTask(Long topicId, String title, String contentType) {
         Task task = new Task();
         task.setTopicId(topicId);
         task.setTitle(title);
+        task.setContentType(contentType != null ? contentType : "video");
         task.setStatus("WAIT");
         task.setProgress(0);
         taskMapper.insert(task);

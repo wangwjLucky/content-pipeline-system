@@ -1,5 +1,6 @@
 package com.pipeline.admin.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.pipeline.admin.common.BaseEntity;
@@ -20,6 +21,10 @@ public class Task extends BaseEntity {
 
     @Schema(description = "关联脚本 ID")
     private Long scriptId;
+
+    @Schema(description = "内容产出方式: video/text/image/image_text")
+    @TableField("content_type")
+    private String contentType;
 
     @Schema(description = "任务状态: WAIT/SCRIPTING/SCRIPT_REVIEW/STORYBOARD/GENERATING/VOICEOVER/EDITING/REVIEW/READY/PUBLISHED/CANCELLED/ERROR")
     private String status;

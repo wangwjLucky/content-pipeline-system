@@ -8,6 +8,7 @@ import com.pipeline.admin.service.TopicService;
 import com.pipeline.admin.common.Result;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import java.util.Map;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -51,12 +52,13 @@ public class TopicController {
 
     @OperationLog(module = "选题管理", action = "生成任务")
     @PostMapping("/{id}/generate-task")
-    public Result<Task> generateTask(@PathVariable Long id) {
+    public Result<Task> generateTask(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         Topic topic = topicService.get(id);
         if (topic == null) {
             return Result.error(404, "选题不存在");
         }
-        Task task = taskService.createTask(id, topic.getTitle());
+        String contentType = body != null ? body.get("contentType") : null;
+        Task task = taskService.createTask(id, topic.getTitle(), contentType);
         return Result.success(task);
     }
 }

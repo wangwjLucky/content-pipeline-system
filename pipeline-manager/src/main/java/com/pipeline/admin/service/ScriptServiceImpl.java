@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -95,9 +96,18 @@ public class ScriptServiceImpl implements ScriptService {
         script.setStatus("REJECTED");
         scriptMapper.updateById(script);
 
-        // 任务回退到 WAIT
-        taskService.updateStatus(script.getTaskId(), "WAIT", 0, reason);
-        log.info("脚本已驳回: scriptId={}, taskId={}, reason={}", scriptId, script.getTaskId(), reason);
+        // 根据当前任务状态决定目标状态：
+        // - SCRIPT_REVIEW: 初次审核驳回 → WAIT（重新生成脚本）
+        // - STORYBOARD/GENERATING/VOICEOVER: 后续驳回 → SCRIPT_REVIEW（重新审核）
+        Task currentTask = taskMapper.selectById(script.getTaskId());
+        String targetStatus = "WAIT";
+        int targetProgress = 0;
+        if (currentTask != null && Set.of("STORYBOARD", "GENERATING", "VOICEOVER", "EDITING").contains(currentTask.getStatus())) {
+            targetStatus = "SCRIPT_REVIEW";
+            targetProgress = 30;
+        }
+        taskService.updateStatus(script.getTaskId(), targetStatus, targetProgress, reason);
+        log.info("脚本已驳回: scriptId={}, taskId={}, reason={}, targetStatus={}", scriptId, script.getTaskId(), reason, targetStatus);
     }
 
     @Override

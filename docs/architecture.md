@@ -1,6 +1,6 @@
 # 内容生产流水线系统 — 架构总览
 
-> 版本：v1.1 | 日期：2026-07-19
+> 版本：v1.2 | 日期：2026-07-20
 
 ---
 
@@ -65,6 +65,21 @@
 | Python → Java（回调） | HTTP POST               | JSON（X-Callback-Token 认证） |
 | Python → AI API       | HTTP（通过 AI Gateway） | JSON                          |
 | 所有服务 → MinIO      | HTTP                    | S3 兼容 API                   |
+
+### 2.4 AI Gateway 路由策略
+
+AI Gateway 按模型类型 + 权重动态选择 Provider：
+
+| 端点 | 路由逻辑 |
+|------|----------|
+| `/ai/v1/chat` | 优先 `text` 类型，权重高的被选中概率大 |
+| `/ai/v1/generate` | 优先 `text` 类型，支持按模型名查找 |
+| `/ai/v1/video/generate` | 优先 `video` 类型，加权随机 |
+| `/ai/v1/image/generate` | 优先 `image` 类型，降级到 `text` |
+| `/ai/v1/voice/generate` | 优先 `audio` 类型，加权随机 |
+| `/ai/v1/script/generate` | 遍历所有 Provider 找支持该模型的 |
+
+每个 Provider 有 `model_type` 和 `weight` 属性，`get_model_type(model_id)` 可查询单个模型的具体类型（如 `sensenova-u1-fast` → `image`）。
 | Java → PostgreSQL     | JDBC                    | TCP :5432                     |
 | Java → Redis          | Redis Protocol          | TCP :6379                     |
 

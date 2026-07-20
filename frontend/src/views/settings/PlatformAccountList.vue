@@ -6,7 +6,7 @@
     <a-table :dataSource="accounts" :columns="columns" :loading="loading" rowKey="id" :pagination="false">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'platform'">
-          <a-tag>{{ record.platform }}</a-tag>
+          <a-tag>{{ platformLabel(record.platform) }}</a-tag>
         </template>
         <template v-if="column.key === 'status'">
           <a-switch v-model:checked="record.status" checkedValue="ENABLED" unCheckedValue="DISABLED" @change="(checked: boolean) => handleToggleStatus(record.id, checked)" />
@@ -53,6 +53,11 @@ const columns = [
   { title: '创建时间', dataIndex: 'createdAt' },
   { title: '操作', key: 'action' },
 ]
+
+function platformLabel(s: string) {
+  const map: Record<string, string> = { douyin: '抖音', kuaishou: '快手', xiaohongshu: '小红书', bilibili: 'B站', weibo: '微博' }
+  return map[s] || s
+}
 
 async function load() {
   loading.value = true

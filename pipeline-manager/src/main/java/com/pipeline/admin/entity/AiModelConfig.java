@@ -1,8 +1,10 @@
 package com.pipeline.admin.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.pipeline.admin.common.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -15,10 +17,15 @@ public class AiModelConfig extends BaseEntity {
     private String modelName;
 
     @Schema(description = "供应商: openai/kling/doubao")
+    @NotBlank(message = "供应商不能为空")
     private String provider;
 
     @Schema(description = "API Key（加密存储）")
     private String apiKeyEncrypted;
+
+    @TableField(exist = false)
+    @Schema(description = "API Key（明文，仅写入时使用，不持久化）")
+    private String apiKey;
 
     @Schema(description = "API 端点")
     private String endpoint;

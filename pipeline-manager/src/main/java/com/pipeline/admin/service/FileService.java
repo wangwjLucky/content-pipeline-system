@@ -29,6 +29,7 @@ public class FileService {
      * @return 文件访问 URL
      */
     public String upload(String bucket, String module, Long taskId, MultipartFile file) throws IOException {
+        ensureBucketExists(bucket);
         // 生成唯一文件名：{module}/{taskId}/{uuid}_{原始文件名}
         String originalName = file.getOriginalFilename();
         String ext = "";
@@ -52,6 +53,7 @@ public class FileService {
      * 获取文件下载 URL（通过 S3 的 GetObject 返回字节流）
      */
     public byte[] download(String bucket, String key) {
+        ensureBucketExists(bucket);
         GetObjectRequest request = GetObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)
@@ -67,6 +69,7 @@ public class FileService {
      * 列出 bucket 下的文件
      */
     public List<String> listFiles(String bucket, String prefix) {
+        ensureBucketExists(bucket);
         ListObjectsV2Request request = ListObjectsV2Request.builder()
                 .bucket(bucket)
                 .prefix(prefix)
@@ -81,6 +84,7 @@ public class FileService {
      * 删除文件
      */
     public void delete(String bucket, String key) {
+        ensureBucketExists(bucket);
         DeleteObjectRequest request = DeleteObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)

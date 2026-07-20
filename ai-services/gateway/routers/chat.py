@@ -2,23 +2,22 @@
 
 from fastapi import APIRouter, HTTPException
 from common.models import ChatRequest, ChatResponse
-from gateway.providers.registry import get_provider, get_providers
+from gateway.providers.registry import get_provider_weighted, get_providers
 
 router = APIRouter(tags=["chat"])
 
 
-def _get_provider(model: str):
-    """根据模型名获取 Provider"""
-    for provider in get_providers():
-        if model in provider.supported_models:
-            return provider
-    raise HTTPException(status_code=400, detail=f"不支持的模型: {model}")
-
-
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """AI 对话"""
-    provider = _get_provider(request.model)
+    """AI 对话（按权重选择文本模型）"""
+    provider = get_provider_weighted("text")
+    if request.model:
+        for p in get_providers():
+            if request.model in p.supported_models:
+                provider = p
+                break
+    if provider is None:
+        raise HTTPException(status_code=400, detail=f"不支持的模型: {request.model}")
     content = await provider.chat(
         messages=request.messages,
         model=request.model,

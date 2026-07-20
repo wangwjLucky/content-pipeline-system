@@ -6,7 +6,10 @@
     <a-table :dataSource="topics" :columns="columns" :loading="loading" rowKey="id" :pagination="{ current: page, pageSize: size, total, onChange: load }">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
-          <a-tag :color="record.status === 'COMPLETED' ? 'green' : 'orange'">{{ record.status }}</a-tag>
+          <a-tag :color="record.status === 'COMPLETED' ? 'green' : 'orange'">{{ statusLabel(record.status) }}</a-tag>
+        </template>
+        <template v-if="column.key === 'source'">
+          {{ sourceLabel(record.source) }}
         </template>
         <template v-if="column.key === 'action'">
           <a-space>
@@ -51,11 +54,21 @@ const form = ref({ title: '', source: 'MANUAL' })
 const columns = [
   { title: 'ID', dataIndex: 'id', width: 80 },
   { title: '标题', dataIndex: 'title' },
-  { title: '来源', dataIndex: 'source', width: 100 },
+  { title: '来源', key: 'source', width: 100 },
   { title: '热度', dataIndex: 'hotScore', width: 80 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '操作', key: 'action', width: 120 },
 ]
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { PENDING: '待处理', PROCESSING: '处理中', COMPLETED: '已完成' }
+  return map[s] || s
+}
+
+function sourceLabel(s: string) {
+  const map: Record<string, string> = { MANUAL: '手动', AUTO: '自动', HOT: '热点' }
+  return map[s] || s
+}
 
 async function load(p?: number) {
   if (p) page.value = p

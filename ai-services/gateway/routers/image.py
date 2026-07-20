@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from gateway.providers.registry import get_provider
+from gateway.providers.registry import get_provider_weighted
 
 router = APIRouter(tags=["image"])
 
@@ -28,9 +28,11 @@ class ImageGenerateResponse(BaseModel):
 @router.post("/image/generate", response_model=ImageGenerateResponse)
 async def image_generate(request: ImageGenerateRequest):
     """生成图片（调用可灵或 DALL-E）"""
-    provider = get_provider("keling") or get_provider("openai")
+    provider = get_provider_weighted("image")
     if provider is None:
-        raise HTTPException(status_code=500, detail="图片生成服务不可用：未配置 Provider")
+        provider = get_provider_weighted("text")
+    if provider is None:
+        raise HTTPException(status_code=500, detail="图片生成服务不可用：未配置图片或文本模型")
     result = await provider.generate(
         prompt=request.prompt,
         model=request.model,

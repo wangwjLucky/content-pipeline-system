@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS voice (
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_voice_task_id ON voice(task_id);
 
 -- 发布日志表
 CREATE TABLE IF NOT EXISTS publish_log (

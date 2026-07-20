@@ -9,7 +9,7 @@
     <a-table :dataSource="publishes" :columns="columns" :loading="loading" rowKey="id" :pagination="false">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
-          <a-tag :color="record.status === 'PUBLISHED' ? 'green' : record.status === 'FAILURE' ? 'red' : record.status === 'CANCELLED' ? 'default' : 'orange'">{{ record.status }}</a-tag>
+          <a-tag :color="record.status === 'PUBLISHED' ? 'green' : record.status === 'FAILURE' ? 'red' : record.status === 'CANCELLED' ? 'default' : 'orange'">{{ statusLabel(record.status) }}</a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-space>
@@ -72,6 +72,11 @@ const columns = [
   { title: '发布时间', dataIndex: 'publishedAt', width: 160 },
   { title: '操作', key: 'action', width: 200 },
 ]
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { PENDING: '待发布', PUBLISHED: '已发布', FAILURE: '失败', CANCELLED: '已取消' }
+  return map[s] || s
+}
 
 async function load() {
   loading.value = true

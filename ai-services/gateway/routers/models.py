@@ -36,11 +36,15 @@ async def list_models():
             models.append({
                 "id": model,
                 "provider": provider.name,
+                "model_type": provider.get_model_type(model),
             })
         if models:
             providers.append({
                 "provider": provider.name,
                 "provider_name": _PROVIDER_NAMES.get(provider.name, provider.name),
+                "model_type": provider.model_type,
+                "weight": provider.weight,
+                "endpoint": getattr(provider, "endpoint", ""),
                 "models": models,
             })
     # 扁平列表（兼容前端下拉选择，按模型 ID 去重）

@@ -5,7 +5,7 @@ export function getStoryboards(taskId: number) {
 }
 
 export function batchSaveStoryboards(taskId: number, storyboards: any[]) {
-  return request.post(`/tasks/${taskId}/storyboard`, storyboards)
+  return request.put(`/tasks/${taskId}/storyboard`, storyboards)
 }
 
 export function autoSplitStoryboard(taskId: number) {

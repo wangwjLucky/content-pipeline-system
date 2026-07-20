@@ -23,6 +23,8 @@ class OpenAIProvider(BaseProvider):
 
     def __init__(self, api_key: str = "", endpoint: str = ""):
         super().__init__()
+        self._model_type = "text"
+        self._weight = 10
         self.api_key = api_key
         self.endpoint = endpoint or "https://api.openai.com/v1"
         self._http_client = httpx.AsyncClient(timeout=120)

@@ -4,7 +4,7 @@
       <a-descriptions-item label="标题">{{ script.title }}</a-descriptions-item>
       <a-descriptions-item label="版本">v{{ script.version }}</a-descriptions-item>
       <a-descriptions-item label="状态">
-        <a-tag :color="statusColor(script.status)">{{ script.status }}</a-tag>
+        <a-tag :color="statusColor(script.status)">{{ statusLabel(script.status) }}</a-tag>
       </a-descriptions-item>
     </a-descriptions>
 
@@ -41,6 +41,11 @@ const editableSubtitle = ref('')
 function statusColor(s: string) {
   const map: Record<string, string> = { PENDING_REVIEW: 'purple', APPROVED: 'green', REJECTED: 'red' }
   return map[s] || 'default'
+}
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { PENDING: '待处理', PENDING_REVIEW: '待审核', APPROVED: '已批准', REJECTED: '已驳回' }
+  return map[s] || s
 }
 
 async function load() {

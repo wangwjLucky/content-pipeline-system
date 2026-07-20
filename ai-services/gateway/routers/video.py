@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
-from gateway.providers.registry import get_provider
+from gateway.providers.registry import get_provider_weighted
 
 router = APIRouter(tags=["video"])
 
@@ -28,9 +28,9 @@ class VideoStatusResponse(BaseModel):
 @router.post("/video/generate")
 async def video_generate(request: VideoGenerateRequest):
     """生成视频素材"""
-    provider = get_provider("keling") or get_provider("veo") or get_provider("openai")
+    provider = get_provider_weighted("video")
     if provider is None:
-        return {"task_id": request.task_id, "error": "视频生成服务不可用：未配置 Provider", "status": "failed"}
+        return {"task_id": request.task_id, "error": "视频生成服务不可用：未配置视频模型", "status": "failed"}
     result = await provider.generate(
         prompt=request.prompt,
         model=request.model,

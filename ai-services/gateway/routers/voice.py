@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
-from gateway.providers.registry import get_provider
+from gateway.providers.registry import get_provider_weighted
 
 router = APIRouter(tags=["voice"])
 
@@ -26,9 +26,9 @@ class VoiceCloneRequest(BaseModel):
 @router.post("/voice/generate")
 async def voice_generate(request: VoiceGenerateRequest):
     """生成配音"""
-    provider = get_provider("doubao")
+    provider = get_provider_weighted("audio")
     if provider is None:
-        return {"task_id": request.task_id, "error": "配音服务不可用：未配置 Provider", "status": "failed"}
+        return {"task_id": request.task_id, "error": "配音服务不可用：未配置音频模型", "status": "failed"}
     result = await provider.generate(
         prompt=request.text,
         voice_type=request.voice_type,

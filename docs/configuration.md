@@ -2,7 +2,7 @@
 
 # 内容生产流水线系统 — 配置体系文档
 
-> 版本：v1.1 | 日期：2026-07-19
+> 版本：v1.2 | 日期：2026-07-20
 
 ---
 
@@ -542,6 +542,7 @@ docker compose up -d
 | `pipeline.callback-base-url` | `CALLBACK_BASE_URL` | `http://host.docker.internal:8080`       | 回调地址      |
 | `pipeline.callback-token`    | `CALLBACK_TOKEN`    | `pipeline-callback-token-change-in-prod` | 回调令牌      |
 | `minio.secret-key`           | —                    | `pipeline123`                            | MinIO 密钥    |
+| `AES_ENCRYPTION_KEY`         | `AES_ENCRYPTION_KEY` | `pipeline-default-key-change-in-prod!` | AES-256-GCM 加密密钥（API Key 和 Cookie 加密存储） |
 
 ### 7.3 基础设施（根目录 .env）
 
@@ -555,6 +556,7 @@ docker compose up -d
 | `JWT_SECRET`        | `pipeline-secret-key-change-in-prod`     | pipeline-admin           | JWT 签名密钥  |
 | `CALLBACK_TOKEN`    | `pipeline-callback-token-change-in-prod` | 所有服务                 | 回调认证令牌  |
 | `CALLBACK_BASE_URL` | `http://pipeline-admin:8080`             | pipeline-admin           | Java 回调地址 |
+| `AES_ENCRYPTION_KEY` | `pipeline-default-key-change-in-prod!` | pipeline-admin           | AES-256-GCM 加密密钥 |
 
 ---
 

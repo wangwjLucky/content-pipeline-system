@@ -22,6 +22,8 @@ class VeoProvider(BaseProvider):
 
     def __init__(self, api_key: str = "", endpoint: str = ""):
         super().__init__()
+        self._model_type = "video"
+        self._weight = 8
         self.api_key = api_key
         self.endpoint = endpoint or "https://generativelanguage.googleapis.com"
         self._http_client = httpx.AsyncClient(timeout=30)

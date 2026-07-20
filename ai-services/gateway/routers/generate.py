@@ -2,26 +2,24 @@
 
 from fastapi import APIRouter, HTTPException
 from common.models import GenerateRequest, GenerateResponse
-from gateway.providers.registry import get_providers, get_provider
+from gateway.providers.registry import get_provider_weighted
 
 router = APIRouter(tags=["generate"])
 
 
-def _get_generate_provider(model: str):
-    """根据模型名获取合适的生成 Provider"""
-    for provider in get_providers():
-        if model in provider.supported_models:
-            return provider
-    # 默认使用 OpenAI（或 DeepSeek 兜底）
-    return get_provider("openai") or get_provider("deepseek")
-
-
 @router.post("/generate", response_model=GenerateResponse)
 async def generate(request: GenerateRequest):
-    """通用 AI 生成"""
-    provider = _get_generate_provider(request.model)
+    """通用 AI 生成（按权重选择文本模型）"""
+    provider = get_provider_weighted("text")
     if provider is None:
         raise HTTPException(status_code=400, detail=f"不支持的模型: {request.model}")
+    if request.model and request.model not in provider.supported_models:
+        # 指定了模型但当前 provider 不支持，尝试找支持的 provider
+        from gateway.providers.registry import get_providers
+        for p in get_providers():
+            if request.model in p.supported_models:
+                provider = p
+                break
     result = await provider.generate(
         prompt=request.prompt,
         model=request.model,

@@ -1,6 +1,6 @@
 # 服务说明与调用链路
 
-> 版本：v1.1 | 日期：2026-07-19
+> 版本：v1.2 | 日期：2026-07-20
 >
 > 系统由 **Java 后台**（pipeline-manager）、**7 个 Python 微服务**、**Vue 3 前端**、**4 个基础设施服务** 组成。
 
@@ -205,10 +205,10 @@ pipeline.callback-token=${CALLBACK_TOKEN}
 | 回调 service | 推进到            | 进度 | 附加操作                                                |
 | ------------ | ----------------- | ---- | ------------------------------------------------------- |
 | `script`   | `SCRIPT_REVIEW` | 30%  | 创建/更新 Script 记录，幂等性检查（已有脚本则更新现有） |
-| `prompt`   | `GENERATING`    | 50%  | 保存 AI 拆分的分镜数据（批量保存，先删后插）            |
-| `video`    | `VOICEOVER`     | 60%  | —                                                      |
-| `image`    | `VOICEOVER`     | 60%  | —                                                      |
-| `voice`    | `EDITING`       | 80%  | —                                                      |
+| `prompt`   | `GENERATING`    | 50%  | 保存 AI 拆分的分镜数据（批量保存，先删后插），自动创建素材记录并触发视频/图片生成 MQ |
+| `video`    | `VOICEOVER`     | 60%  | 更新素材记录 URL 和状态为 SUCCESS                           |
+| `image`    | `VOICEOVER`     | 60%  | 更新素材记录 URL 和状态为 SUCCESS                           |
+| `voice`    | `EDITING`       | 80%  | 更新配音记录 voiceUrl 和状态为 SUCCESS                      |
 | `ffmpeg`   | `REVIEW`        | 95%  | —                                                      |
 
 回调失败时统一推进到 `ERROR` 状态，保留错误信息。
@@ -263,6 +263,8 @@ WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER
 
 **功能**：统一 AI 模型路由入口，所有 Python 服务的 AI 调用都通过此网关转发。
 
+**路由策略**：按模型类型 + 权重动态选择 Provider。每个 Provider 有 `model_type`（text/image/video/audio）和 `weight` 属性，同一类型内按权重随机选择（加权随机）。`get_model_type(model_id)` 可查询单个模型的具体类型。
+
 **路由列表**：
 
 | 路径                        | 方法 | 说明                       |
@@ -289,19 +291,23 @@ WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER
 
 **Provider 注册表**：所有 Provider 实例由 `gateway/providers/registry.py` 统一管理（单例），所有 Router 通过 `get_providers()` / `get_provider()` 获取共享实例。`init_providers()` 初始化时调用每个 Provider 的 `refresh_models()` 动态拉取模型列表。`refresh_all_models()` 使用 `asyncio.gather` 并行刷新所有 Provider 的模型列表，减少启动延迟。
 
+**按类型选择**：`get_providers_by_type(model_type)` 按类型筛选 Provider 并按权重降序排列；`get_provider_weighted(model_type)` 按权重随机选择一个 Provider。`get_model_type(model_id)` 查询指定模型 ID 的类型。
+
 **异步化**：所有 Provider 的 `chat()` 和 `generate()` 方法均为 `async def`，使用 `httpx.AsyncClient` 发送 HTTP 请求。Router 层通过 `await` 调用，避免阻塞事件循环。服务关闭时调用 `shutdown()` 释放所有 Provider 的 HTTP 连接。
 
 **Provider 模型列表策略**：
 
-| Provider  | 模型列表来源                                           | API Key 未配置时     |
-| --------- | ------------------------------------------------------ | -------------------- |
-| OpenAI    | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
-| Claude    | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
-| DeepSeek  | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
-| SenseNova | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
-| 可灵 AI   | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
-| Veo       | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
-| 豆包      | 启动时从 API 动态拉取 TTS 模型列表，失败时使用兜底列表 | 模型列表为空，不显示 |
+| Provider  | 默认模型类型 | 权重 | 模型列表来源                                           | API Key 未配置时     |
+| --------- | ------------ | ---- | ------------------------------------------------------ | -------------------- |
+| OpenAI    | text         | 10   | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
+| Claude    | text         | 10   | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
+| DeepSeek  | text         | 8    | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
+| SenseNova | text         | 8    | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
+| 可灵 AI   | video        | 10   | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
+| Veo       | video        | 8    | 启动时`GET /v1/models` 动态拉取，失败时使用兜底列表  | 模型列表为空，不显示 |
+| 豆包      | audio        | 10   | 启动时从 API 动态拉取 TTS 模型列表，失败时使用兜底列表 | 模型列表为空，不显示 |
+
+各 Provider 支持通过 `_model_type_map` 为单个模型指定不同类型，查询时使用 `get_model_type(model_id)` 获取。
 
 ### 3.2 Script Service（脚本生成）
 

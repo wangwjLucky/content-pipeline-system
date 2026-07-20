@@ -3,7 +3,7 @@
     <a-descriptions v-if="task" bordered :column="2">
       <a-descriptions-item label="标题">{{ task.title }}</a-descriptions-item>
       <a-descriptions-item label="状态">
-        <a-tag :color="statusColor(task.status)">{{ task.status }}</a-tag>
+        <a-tag :color="statusColor(task.status)">{{ statusLabel(task.status) }}</a-tag>
       </a-descriptions-item>
       <a-descriptions-item label="进度">{{ task.progress }}%</a-descriptions-item>
       <a-descriptions-item label="错误信息">{{ task.errorMessage || '-' }}</a-descriptions-item>
@@ -17,8 +17,8 @@
           <clock-circle-outlined v-if="e.toStatus === 'CANCELLED'" style="color: red" />
           <check-circle-outlined v-else style="color: green" />
         </template>
-        <span>{{ e.fromStatus || '开始' }} → {{ e.toStatus }}</span>
-        <br /><small>{{ e.createdAt }} {{ e.operator ? `by ${e.operator}` : '' }} {{ e.comment ? `- ${e.comment}` : '' }}</small>
+        <span>{{ statusLabel(e.fromStatus) || '开始' }} → {{ statusLabel(e.toStatus) }}</span>
+        <br /><small>{{ e.createdAt }} {{ e.operator ? `[${operatorLabel(e.operator)}]` : '' }} {{ e.comment ? `- ${e.comment}` : '' }}</small>
       </a-timeline-item>
     </a-timeline>
     <a-empty v-else description="暂无时间线" />
@@ -50,6 +50,16 @@ const loading = ref(false)
 function statusColor(s: string) {
   const map: Record<string, string> = { WAIT: 'orange', SCRIPTING: 'blue', SCRIPT_REVIEW: 'purple', STORYBOARD: 'geekblue', GENERATING: 'blue', VOICEOVER: 'cyan', EDITING: 'processing', REVIEW: 'purple', READY: 'green', PUBLISHED: 'green', CANCELLED: 'default', ERROR: 'red' }
   return map[s] || 'default'
+}
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { WAIT: '等待中', SCRIPTING: '脚本生成中', SCRIPT_REVIEW: '脚本审核', STORYBOARD: '分镜中', GENERATING: '素材生成中', VOICEOVER: '配音中', EDITING: '剪辑中', REVIEW: '终审中', READY: '待发布', PUBLISHED: '已发布', CANCELLED: '已取消', ERROR: '异常' }
+  return map[s] || s
+}
+
+function operatorLabel(s: string) {
+  const map: Record<string, string> = { SYSTEM: '系统', admin: '管理员' }
+  return map[s] || s
 }
 
 async function load() {

@@ -28,6 +28,8 @@ class DeepSeekProvider(BaseProvider):
 
     def __init__(self, api_key: str = "", endpoint: str = "https://api.deepseek.com/v1"):
         super().__init__()
+        self._model_type = "text"
+        self._weight = 8
         self.api_key = api_key
         self.endpoint = endpoint.rstrip("/")
         self._http_client = httpx.AsyncClient(timeout=120)

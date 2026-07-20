@@ -39,6 +39,8 @@ class Settings(BaseSettings):
 
     # AI Gateway
     gateway_url: str = "http://ai-gateway:8001"
+    # Java 后台地址（用于同步模型配置，Docker 内用 service 名，本地用 host.docker.internal）
+    pipeline_admin_url: str = "http://pipeline-admin:8080"
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     deepseek_api_key: str = ""

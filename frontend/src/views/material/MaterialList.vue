@@ -14,10 +14,10 @@
     <a-table :dataSource="materials" :columns="columns" :loading="loading" rowKey="id" :pagination="false">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'type'">
-          <a-tag :color="record.type === 'video' ? 'blue' : record.type === 'image' ? 'green' : 'cyan'">{{ record.type }}</a-tag>
+          <a-tag :color="record.type === 'video' ? 'blue' : record.type === 'image' ? 'green' : 'cyan'">{{ typeLabel(record.type) }}</a-tag>
         </template>
         <template v-if="column.key === 'status'">
-          <a-tag :color="record.status === 'SUCCESS' ? 'green' : record.status === 'FAILURE' ? 'red' : 'orange'">{{ record.status }}</a-tag>
+          <a-tag :color="record.status === 'SUCCESS' ? 'green' : record.status === 'FAILURE' ? 'red' : 'orange'">{{ statusLabel(record.status) }}</a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-popconfirm title="确定删除？" @confirm="handleDelete(record.id)">
@@ -49,6 +49,16 @@ const columns = [
   { title: '创建时间', dataIndex: 'createdAt' },
   { title: '操作', key: 'action' },
 ]
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { PENDING: '待处理', SUCCESS: '已完成', FAILURE: '失败' }
+  return map[s] || s
+}
+
+function typeLabel(s: string) {
+  const map: Record<string, string> = { video: '视频', image: '图片', audio: '音频' }
+  return map[s] || s
+}
 
 async function load() {
   loading.value = true

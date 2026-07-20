@@ -42,10 +42,16 @@ class SenseNovaProvider(BaseProvider):
 
     def __init__(self, api_key: str = "", endpoint: str = ""):
         super().__init__()
+        self._model_type = "text"
+        self._weight = 8
         self.api_key = api_key
         self.endpoint = endpoint or "https://token.sensenova.cn/v1"
         self._http_client = httpx.AsyncClient(timeout=120)
         self._supported_models = list(_FALLBACK_MODELS) if api_key else []
+        # 各模型的具体类型，用于路由到对应处理方法
+        self._model_type_map: dict[str, str] = {
+            "sensenova-u1-fast": "image",
+        }
 
     @property
     def name(self) -> str:
@@ -171,7 +177,12 @@ class SenseNovaProvider(BaseProvider):
         return content
 
     async def generate(self, prompt: str, **kwargs) -> Any:
-        """通用生成"""
+        """通用生成，根据模型类型路由到对应处理方法"""
+        model = kwargs.get("model", "")
+        model_type = self.get_model_type(model)
+        if model_type == "image":
+            return await self.generate_image(prompt, **kwargs)
+
         system_prompt = kwargs.get("system_prompt", "你是一个有帮助的助手。")
         messages = [
             {"role": "system", "content": system_prompt},
@@ -183,6 +194,58 @@ class SenseNovaProvider(BaseProvider):
             return json.loads(result)
         except (json.JSONDecodeError, TypeError):
             return {"content": result}
+
+    async def generate_image(self, prompt: str, **kwargs) -> dict:
+        """调用 SenseNova U1 Fast 图像生成接口
+
+        POST https://token.sensenova.cn/v1/images/generations
+        """
+        model = kwargs.get("model", "sensenova-u1-fast")
+        # 兼容 width/height 和 size 两种传参方式
+        width = kwargs.get("width", 2752)
+        height = kwargs.get("height", 1536)
+        size = kwargs.get("size", f"{width}x{height}")
+        n = kwargs.get("n", 1)
+
+        logger.info(f"SenseNova 图像生成: model={model}, size={size}")
+
+        if not self.api_key:
+            logger.warning("SenseNova API Key 未配置，返回模拟数据")
+            return {"task_id": "", "status": "pending", "image_url": None, "prompt": prompt}
+
+        try:
+            response = await self._http_client.post(
+                f"{self.endpoint}/images/generations",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "prompt": prompt,
+                    "size": size,
+                    "n": n,
+                },
+                timeout=120,
+            )
+            response.raise_for_status()
+            data = response.json()
+            logger.info(f"SenseNova 图像生成成功: created={data.get('created')}")
+
+            image_url = ""
+            image_list = data.get("data", [])
+            if image_list:
+                image_url = image_list[0].get("url", "")
+
+            return {
+                "task_id": str(data.get("created", "")),
+                "status": "completed",
+                "image_url": image_url,
+                "prompt": prompt,
+            }
+        except Exception as e:
+            logger.error(f"SenseNova 图像生成失败: {e}")
+            raise
 
     def _mock_chat(self, messages: list[dict[str, str]]) -> str:
         """模拟响应（无 API Key 时降级）"""

@@ -1,11 +1,14 @@
 package com.pipeline.admin.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.pipeline.admin.entity.Material;
 import com.pipeline.admin.entity.Script;
 import com.pipeline.admin.entity.Storyboard;
 import com.pipeline.admin.entity.Task;
+import com.pipeline.admin.mapper.MaterialMapper;
 import com.pipeline.admin.mapper.ScriptMapper;
 import com.pipeline.admin.mapper.TaskMapper;
+import com.pipeline.admin.mapper.VoiceMapper;
 import com.pipeline.admin.service.StoryboardService;
 import com.pipeline.admin.service.TaskService;
 import com.pipeline.admin.common.Result;
@@ -27,6 +30,8 @@ import java.util.stream.Collectors;
 public class CallbackController {
     private final TaskMapper taskMapper;
     private final ScriptMapper scriptMapper;
+    private final MaterialMapper materialMapper;
+    private final VoiceMapper voiceMapper;
     private final TaskService taskService;
     private final StoryboardService storyboardService;
 
@@ -131,7 +136,7 @@ public class CallbackController {
                 }
             }
             case "prompt" -> {
-                // 保存 AI 自动拆分的分镜数据
+                // 保存 AI 自动拆分的分镜数据（batchSave 内部会推进到 GENERATING 并触发素材生成）
                 if (data != null && data.containsKey("storyboards")) {
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> sbList = (List<Map<String, Object>>) data.get("storyboards");
@@ -153,24 +158,56 @@ public class CallbackController {
                     storyboardService.batchSave(task.getId(), storyboards);
                     log.info("分镜数据已保存: taskId={}, count={}", task.getId(), storyboards.size());
                 }
-                taskService.updateStatus(task.getId(), "GENERATING", 50, null);
-                log.info("分镜生成完成: taskId={}", task.getId());
             }
             case "video" -> {
+                String url = data != null ? (String) data.get("url") : null;
+                if (data != null && data.containsKey("materialId")) {
+                    Material m = materialMapper.selectById(((Number) data.get("materialId")).longValue());
+                    if (m != null) {
+                        m.setUrl(url);
+                        m.setStatus("SUCCESS");
+                        materialMapper.updateById(m);
+                    }
+                }
                 taskService.updateStatus(task.getId(), "VOICEOVER", 60, null);
                 log.info("视频生成完成: taskId={}（若任务已处于 VOICEOVER 状态，表示另一素材仍在处理中）", task.getId());
             }
             case "image" -> {
+                String url = data != null ? (String) data.get("url") : null;
+                if (data != null && data.containsKey("materialId")) {
+                    Material m = materialMapper.selectById(((Number) data.get("materialId")).longValue());
+                    if (m != null) {
+                        m.setUrl(url);
+                        m.setStatus("SUCCESS");
+                        materialMapper.updateById(m);
+                    }
+                }
                 taskService.updateStatus(task.getId(), "VOICEOVER", 60, null);
                 log.info("图片生成完成: taskId={}（若任务已处于 VOICEOVER 状态，表示另一素材仍在处理中）", task.getId());
             }
             case "voice" -> {
+                String voiceUrl = data != null ? (String) data.get("url") : null;
+                // 更新配音记录
+                if (voiceUrl != null) {
+                    com.pipeline.admin.entity.Voice voice = voiceMapper.selectOne(
+                            new LambdaQueryWrapper<com.pipeline.admin.entity.Voice>()
+                                    .eq(com.pipeline.admin.entity.Voice::getTaskId, task.getId()));
+                    if (voice != null) {
+                        voice.setVoiceUrl(voiceUrl);
+                        voice.setStatus("SUCCESS");
+                        voiceMapper.updateById(voice);
+                    }
+                }
                 taskService.updateStatus(task.getId(), "EDITING", 80, null);
                 log.info("配音生成完成: taskId={}", task.getId());
             }
             case "ffmpeg" -> {
                 taskService.updateStatus(task.getId(), "REVIEW", 95, null);
                 log.info("剪辑合成完成: taskId={}", task.getId());
+            }
+            case "review" -> {
+                taskService.updateStatus(task.getId(), "READY", 95, null);
+                log.info("终审通过: taskId={}", task.getId());
             }
             default -> log.warn("未知服务类型: {}", service);
         }

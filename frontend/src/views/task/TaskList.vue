@@ -1,7 +1,7 @@
 <template>
   <a-card title="任务列表">
     <template #extra>
-      <a-select v-model:value="statusFilter" placeholder="筛选状态" style="width: 200px" allowClear @change="load">
+      <a-select v-model:value="statusFilter" placeholder="筛选状态" style="width: 200px" allowClear @change="() => load()">
         <a-select-option value="">全部</a-select-option>
         <a-select-option v-for="s in statuses" :key="s" :value="s">{{ s }}</a-select-option>
       </a-select>

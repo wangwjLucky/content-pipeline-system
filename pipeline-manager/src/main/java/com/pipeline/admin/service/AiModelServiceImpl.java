@@ -29,8 +29,11 @@ public class AiModelServiceImpl implements AiModelService {
     @Override
     public AiModelConfig create(AiModelConfig config) {
         config.setEnabled(true);
-        // 加密存储 API Key
-        if (config.getApiKeyEncrypted() != null && !config.getApiKeyEncrypted().isEmpty()) {
+        // 兼容前端传 apiKey 字段
+        String rawKey = config.getApiKey();
+        if (rawKey != null && !rawKey.isEmpty()) {
+            config.setApiKeyEncrypted(EncryptionUtil.encrypt(rawKey));
+        } else if (config.getApiKeyEncrypted() != null && !config.getApiKeyEncrypted().isEmpty()) {
             config.setApiKeyEncrypted(EncryptionUtil.encrypt(config.getApiKeyEncrypted()));
         }
         mapper.insert(config);

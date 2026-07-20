@@ -7,7 +7,14 @@
 """
 
 import asyncio
+import http.client
+import json
+import random
+import subprocess
+import threading
+import time
 from typing import Any
+import httpx
 from common.config import settings
 from common.logging import setup_logging
 from gateway.providers.openai_provider import OpenAIProvider
@@ -62,6 +69,77 @@ def init_providers() -> None:
     logger.info(f"Provider 注册表初始化完成，共 {len(_all_providers)} 个 Provider")
 
 
+def _sync_model_configs() -> None:
+    """从 Java 后台同步模型配置，覆盖 Provider 的类型和权重"""
+    from urllib.parse import urlparse
+    admin_url = settings.pipeline_admin_url.rstrip("/")
+    parsed = urlparse(admin_url)
+    host = parsed.hostname or "host.docker.internal"
+    port = parsed.port or 8080
+    path = "/api/v1/ai-models?page=1&size=100"
+
+    configs = []
+    for attempt in range(5):
+        try:
+            # 用 getent 解析 hostname（兼容 Docker Desktop 的 DNS 延迟）
+            result = subprocess.run(
+                ["getent", "hosts", host],
+                capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                raise Exception(f"DNS 解析失败: {host}")
+            ip = result.stdout.split()[0]
+
+            conn = http.client.HTTPConnection(ip, port, timeout=10)
+            conn.request("GET", path, headers={
+                "Host": host,
+                "X-Callback-Token": settings.callback_token,
+            })
+            resp = conn.getresponse()
+            body = json.loads(resp.read().decode())
+            conn.close()
+            configs = body.get("data", {}).get("records", [])
+            break
+        except Exception as e:
+            if attempt < 4:
+                time.sleep(5)
+                continue
+            logger.warning(f"从 Java 后台同步模型配置失败: {e}，使用 Provider 默认值")
+            return
+    if not configs:
+        logger.info("Java 后台无模型配置，使用 Provider 默认值")
+        return
+
+    for cfg in configs:
+        model_name = cfg.get("modelName")
+        provider_name = cfg.get("provider")
+        model_type = cfg.get("modelType")
+        weight = cfg.get("weight")
+        if not model_name or not provider_name:
+            continue
+
+        provider = _providers_by_name.get(provider_name)
+        if not provider:
+            logger.warning(f"同步配置时未找到 Provider: {provider_name}")
+            continue
+
+        # 更新模型类型映射
+        if model_type:
+            if not hasattr(provider, "_model_type_map") or provider._model_type_map is None:
+                provider._model_type_map = {}
+            provider._model_type_map[model_name] = model_type
+
+        # 更新 Provider 权重（取所有配置中的最大值）
+        if weight is not None:
+            provider._weight = max(provider._weight, weight)
+
+        logger.info(
+        f"模型配置已同步: {model_name} → provider={provider_name}, "
+        f"type={model_type}, weight={weight}"
+    )
+
+    logger.info("模型配置同步完成")
+
+
 async def refresh_all_models() -> None:
     """刷新所有 Provider 的模型列表（启动时调用）"""
     if not _initialized:
@@ -80,6 +158,42 @@ async def refresh_all_models() -> None:
 
     model_count = sum(len(p.supported_models) for p in _all_providers)
     logger.info(f"模型列表刷新完成，共 {model_count} 个模型")
+
+    # 后台线程延迟同步（等待网络就绪）
+    threading.Thread(target=lambda: (time.sleep(5), _sync_model_configs()), daemon=True).start()
+
+
+def get_model_type(model_id: str) -> str | None:
+    """查询指定模型 ID 的类型（遍历所有 Provider）"""
+    for provider in get_providers():
+        if model_id in provider.supported_models:
+            return provider.get_model_type(model_id)
+    return None
+
+
+def get_providers_by_type(model_type: str) -> list[Any]:
+    """按模型类型获取 Provider 列表，按权重降序排列"""
+    providers = [p for p in get_providers() if p.model_type == model_type and p.supported_models]
+    providers.sort(key=lambda p: p.weight, reverse=True)
+    return providers
+
+
+def get_provider_weighted(model_type: str) -> Any | None:
+    """按模型类型和权重随机选择一个 Provider（加权随机）"""
+    providers = get_providers_by_type(model_type)
+    if not providers:
+        return None
+    weights = [p.weight for p in providers]
+    total = sum(weights)
+    if total <= 0:
+        return providers[0]
+    r = random.uniform(0, total)
+    cumulative = 0
+    for i, p in enumerate(providers):
+        cumulative += weights[i]
+        if r <= cumulative:
+            return p
+    return providers[-1]
 
 
 async def shutdown() -> None:

@@ -5,6 +5,8 @@ import com.pipeline.admin.common.Result;
 import com.pipeline.admin.entity.AiModelConfig;
 import com.pipeline.admin.service.AiModelService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +35,7 @@ public class AiModelController {
 
     @OperationLog(module = "模型配置", action = "创建")
     @PostMapping
-    public Result<AiModelConfig> create(@RequestBody AiModelConfig config) {
+    public Result<AiModelConfig> create(@Valid @RequestBody AiModelConfig config) {
         return Result.success(aiModelService.create(config));
     }
 

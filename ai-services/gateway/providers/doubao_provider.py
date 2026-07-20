@@ -22,6 +22,8 @@ class DoubaoProvider(BaseProvider):
 
     def __init__(self, api_key: str = "", endpoint: str = ""):
         super().__init__()
+        self._model_type = "audio"
+        self._weight = 10
         self.api_key = api_key
         self.endpoint = endpoint or "https://open.volcengine.com"
         self._http_client = httpx.AsyncClient(timeout=30)

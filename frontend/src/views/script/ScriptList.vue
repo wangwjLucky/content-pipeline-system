@@ -2,7 +2,7 @@
   <a-card title="脚本列表">
     <template #extra>
       <a-space>
-        <a-select v-model:value="filterStatus" placeholder="状态筛选" style="width: 140px" allow-clear @change="load">
+        <a-select v-model:value="filterStatus" placeholder="状态筛选" style="width: 140px" allow-clear @change="() => load()">
           <a-select-option value="PENDING_REVIEW">待审核</a-select-option>
           <a-select-option value="APPROVED">已批准</a-select-option>
           <a-select-option value="REJECTED">已驳回</a-select-option>
@@ -12,7 +12,7 @@
     <a-table :dataSource="scripts" :columns="columns" :loading="loading" rowKey="id" :pagination="{ current: page, pageSize: size, total, onChange: load }">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
-          <a-tag :color="statusColor(record.status)">{{ record.status }}</a-tag>
+          <a-tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-space>
@@ -51,6 +51,11 @@ const columns = [
 function statusColor(s: string) {
   const map: Record<string, string> = { PENDING_REVIEW: 'purple', APPROVED: 'green', REJECTED: 'red' }
   return map[s] || 'default'
+}
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { PENDING: '待处理', PENDING_REVIEW: '待审核', APPROVED: '已批准', REJECTED: '已驳回' }
+  return map[s] || s
 }
 
 async function load(p?: number) {

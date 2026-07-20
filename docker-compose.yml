@@ -57,7 +57,15 @@ services:
             PIPELINE_RABBITMQ_HOST: rabbitmq
             PIPELINE_MINIO_ENDPOINT: http://minio:9000
             PIPELINE_GATEWAY_URL: http://ai-gateway:8001
+            PIPELINE_PIPELINE_ADMIN_URL: ${PIPELINE_PIPELINE_ADMIN_URL:-http://host.docker.internal:8080}
             PIPELINE_CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+            PIPELINE_OPENAI_API_KEY: ${PIPELINE_OPENAI_API_KEY:-}
+            PIPELINE_ANTHROPIC_API_KEY: ${PIPELINE_ANTHROPIC_API_KEY:-}
+            PIPELINE_DEEPSEEK_API_KEY: ${PIPELINE_DEEPSEEK_API_KEY:-}
+            PIPELINE_SENSENOVA_API_KEY: ${PIPELINE_SENSENOVA_API_KEY:-}
+            PIPELINE_KELING_API_KEY: ${PIPELINE_KELING_API_KEY:-}
+            PIPELINE_DOUBAO_API_KEY: ${PIPELINE_DOUBAO_API_KEY:-}
+            PIPELINE_VEO_API_KEY: ${PIPELINE_VEO_API_KEY:-}
         depends_on:
             rabbitmq:
                 condition: service_started
@@ -212,6 +220,7 @@ services:
             minio.endpoint: http://minio:9000
             minio.access-key: ${MINIO_USER:-pipeline}
             minio.secret-key: ${MINIO_PASSWORD:-pipeline123}
+            AES_ENCRYPTION_KEY: ${AES_ENCRYPTION_KEY:-pipeline-default-key-change-in-prod!}
         depends_on:
             postgres:
                 condition: service_healthy

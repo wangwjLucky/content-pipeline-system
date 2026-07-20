@@ -6,7 +6,7 @@
     <a-table :dataSource="users" :columns="columns" :loading="loading" rowKey="id" :pagination="false">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
-          <a-tag :color="record.status === 'ENABLED' ? 'green' : 'red'">{{ record.status }}</a-tag>
+          <a-tag :color="record.status === 'ENABLED' ? 'green' : 'red'">{{ statusLabel(record.status) }}</a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-space>
@@ -56,6 +56,11 @@ const columns = [
   { title: '创建时间', dataIndex: 'createdAt' },
   { title: '操作', key: 'action' },
 ]
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { ENABLED: '启用', DISABLED: '禁用', ACTIVE: '活跃' }
+  return map[s] || s
+}
 
 async function load() {
   loading.value = true

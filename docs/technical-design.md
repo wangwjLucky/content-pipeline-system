@@ -809,6 +809,7 @@ covers/123/20260716_cover.png
 ### 10.1 认证与授权
 
 - **Spring Security + JWT 无状态认证**：`SecurityConfig.java` 配置，`JwtAuthFilter` 从请求头 `Authorization: Bearer <token>` 提取并验证 JWT
+- **回调令牌认证**：`JwtAuthFilter` 同时支持 `X-Callback-Token` 请求头，匹配则跳过 JWT 验证。用于 AI Gateway 内部调用（如同步模型配置），令牌通过 `CALLBACK_TOKEN` 环境变量配置
 - **密码加密**：使用 `BCryptPasswordEncoder` 存储用户密码哈希
 - **Session 管理**：`SessionCreationPolicy.STATELESS`（无状态，每次请求独立认证）
 - **CORS**：配置为允许所有来源（`*`），所有 HTTP 方法，所有请求头
@@ -818,6 +819,7 @@ covers/123/20260716_cover.png
   - `POST /api/v1/auth/register` — 用户注册
   - `GET /api/v1/health` — 健康检查
   - `POST /api/v1/tasks/callback` — Python 服务回调（需 `X-Callback-Token` 头）
+  - `GET /api/v1/ai-models` — AI 模型配置列表（需 `X-Callback-Token` 头，供 Gateway 内部同步）
 - RBAC 权限模型（管理员 / 运营 / 编辑 三级角色）
 - **操作日志**：`OperationLogAspect` 通过 AOP 拦截 `@OperationLog(module, action)` 注解，自动记录操作人、模块、动作、耗时、参数、成功/失败状态
 - **数据初始化**：`DataInitializer` 首次启动时自动创建默认管理员账号（`admin / admin123`）

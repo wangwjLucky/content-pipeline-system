@@ -207,7 +207,7 @@ pipeline.callback-token=${CALLBACK_TOKEN}
 | `script`   | `SCRIPT_REVIEW` | 30%  | 创建/更新 Script 记录，幂等性检查（已有脚本则更新现有） |
 | `prompt`   | `GENERATING`    | 50%  | 保存 AI 拆分的分镜数据（批量保存，先删后插），自动创建素材记录并触发视频/图片生成 MQ |
 | `video`    | `VOICEOVER`     | 60%  | 更新素材记录 URL 和状态为 SUCCESS                           |
-| `image`    | `VOICEOVER`     | 60%  | 更新素材记录 URL 和状态为 SUCCESS                           |
+| `image`    | `VOICEOVER`(视频) / `REVIEW`(图片/图文) | 60%  | 更新素材记录 URL 和状态为 SUCCESS。根据 `task.content_type` 分支：`image`/`image_text` 进入 REVIEW，`video` 进入 VOICEOVER |
 | `voice`    | `EDITING`       | 80%  | 更新配音记录 voiceUrl 和状态为 SUCCESS                      |
 | `ffmpeg`   | `REVIEW`        | 95%  | —                                                      |
 
@@ -215,19 +215,27 @@ pipeline.callback-token=${CALLBACK_TOKEN}
 
 ### 状态机
 
+基础流程（视频，`content_type=video`）：
+
 ```
 WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER → EDITING → REVIEW → READY → PUBLISHED
-  ↑                                                                                          ↑                  │
-  │                                                                                          │                  │
-  └───────────────────────────────── ERROR ──────────────────────────────────────────────────┘                  │
-                                                                                                          CANCELLED (终态)
+```
+
+不同 `content_type` 的状态路径差异：
+
+| 类型 | 脚本审核通过后 | 素材生成后 | 配音/剪辑 |
+|------|---------------|-----------|----------|
+| `video`（视频） | → STORYBOARD | → VOICEOVER | 需要 |
+| `text`（纯文案） | → **READY**（跳过后续） | — | 跳过 |
+| `image`（纯图片） | → STORYBOARD | → **REVIEW**（跳过配音/剪辑） | 跳过 |
+| `image_text`（图文） | → STORYBOARD | → **REVIEW**（跳过配音/剪辑） | 跳过 |
 
 允许的转换（含自循环和回退）：
   WAIT         → WAIT(自循环) | SCRIPTING | CANCELLED
   SCRIPTING    → SCRIPT_REVIEW | ERROR | CANCELLED
-  SCRIPT_REVIEW → STORYBOARD(批准) | WAIT(驳回) | CANCELLED
+  SCRIPT_REVIEW → STORYBOARD(批准) | **READY**(纯文案批准) | WAIT(驳回) | CANCELLED
   STORYBOARD   → GENERATING | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
-  GENERATING   → VOICEOVER | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
+  GENERATING   → VOICEOVER | **REVIEW**(图片/图文) | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
   VOICEOVER    → VOICEOVER(素材就绪中) | EDITING | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
   EDITING      → REVIEW | ERROR | CANCELLED
   REVIEW       → READY(通过) | WAIT(驳回) | CANCELLED

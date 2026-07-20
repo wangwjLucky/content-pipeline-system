@@ -102,13 +102,22 @@ Python 服务回调 Java 时携带 `X-Callback-Token` 头，Java 端验证令牌
 
 ## 3. 任务状态机
 
+### 3.1 基础流程（视频）
+
 ```
 WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER → EDITING → REVIEW → READY → PUBLISHED
-  ↑                                                                                          ↑                  │
-  │                                                                                          │                  │
-  └───────────────────────────────── ERROR ──────────────────────────────────────────────────┘                  │
-                                                                                                          CANCELLED (终态)
 ```
+
+### 3.2 内容产出方式（content_type）
+
+Task 支持 `content_type` 字段（`video`/`text`/`image`/`image_text`），不同类型走不同状态路径：
+
+| 类型 | 脚本审核通过后 | 素材生成后 |
+|------|---------------|-----------|
+| `video` | → STORYBOARD | → VOICEOVER |
+| `text` | → **READY**（跳过分镜/素材/配音/剪辑） | — |
+| `image` | → STORYBOARD | → **REVIEW**（跳过配音/剪辑） |
+| `image_text` | → STORYBOARD | → **REVIEW**（跳过配音/剪辑） |
 
 支持自循环和回退：`VOICEOVER` 可自循环（素材就绪中），`STORYBOARD`、`GENERATING`、`VOICEOVER` 可回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核），`SCRIPT_REVIEW` 驳回后回到 `WAIT` 重新开始。
 

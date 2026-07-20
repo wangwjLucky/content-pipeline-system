@@ -403,14 +403,14 @@ docker exec -t postgres pg_dumpall -U postgres > all-dbs-backup.sql
 
 ### 6.1 网络类型
 
-| 网络驱动 | 说明 | 适用场景 |
-|---------|------|---------|
-| `bridge` | 默认网络，容器间通过 IP 通信 | 单机部署（默认） |
-| `host` | 容器直接使用主机网络栈 | 高性能场景、网络监控 |
-| `overlay` | 跨主机的容器网络 | Swarm 集群 |
-| `macvlan` | 容器使用独立 MAC 地址 | 遗留应用、网络策略 |
-| `none` | 无网络 | 需要完全隔离的容器 |
-| `ipvlan` | 容器共享 MAC 但不同 IP | 大规模部署 |
+| 网络驱动    | 说明                         | 适用场景             |
+| ----------- | ---------------------------- | -------------------- |
+| `bridge`  | 默认网络，容器间通过 IP 通信 | 单机部署（默认）     |
+| `host`    | 容器直接使用主机网络栈       | 高性能场景、网络监控 |
+| `overlay` | 跨主机的容器网络             | Swarm 集群           |
+| `macvlan` | 容器使用独立 MAC 地址        | 遗留应用、网络策略   |
+| `none`    | 无网络                       | 需要完全隔离的容器   |
+| `ipvlan`  | 容器共享 MAC 但不同 IP       | 大规模部署           |
 
 ### 6.2 网络操作
 
@@ -1194,37 +1194,41 @@ docker run -v "$(pwd):/app" alpine # 或者
 ## 附录：命令速查表
 
 ### 容器
-| 命令 | 说明 |
-|------|------|
-| `docker run -d -p 80:80 nginx` | 后台运行 Nginx |
-| `docker exec -it <c> /bin/sh` | 进入容器 |
-| `docker logs -f <c>` | 实时日志 |
-| `docker stop <c> && docker rm <c>` | 停止并删除 |
-| `docker cp <c>:/path ./path` | 复制文件 |
+
+| 命令                                 | 说明           |
+| ------------------------------------ | -------------- |
+| `docker run -d -p 80:80 nginx`     | 后台运行 Nginx |
+| `docker exec -it <c> /bin/sh`      | 进入容器       |
+| `docker logs -f <c>`               | 实时日志       |
+| `docker stop <c> && docker rm <c>` | 停止并删除     |
+| `docker cp <c>:/path ./path`       | 复制文件       |
 
 ### 镜像
-| 命令 | 说明 |
-|------|------|
-| `docker pull nginx:alpine` | 拉取镜像 |
-| `docker build -t app:v1 .` | 构建镜像 |
-| `docker push user/app:v1` | 推送镜像 |
-| `docker rmi <img>` | 删除镜像 |
+
+| 命令                              | 说明     |
+| --------------------------------- | -------- |
+| `docker pull nginx:alpine`      | 拉取镜像 |
+| `docker build -t app:v1 .`      | 构建镜像 |
+| `docker push user/app:v1`       | 推送镜像 |
+| `docker rmi <img>`              | 删除镜像 |
 | `docker save <img> -o file.tar` | 导出镜像 |
 
 ### Compose
-| 命令 | 说明 |
-|------|------|
-| `docker compose up -d` | 后台启动所有服务 |
-| `docker compose down` | 停止并删除服务 |
-| `docker compose logs -f` | 实时日志 |
-| `docker compose exec web /bin/sh` | 进入服务容器 |
-| `docker compose build` | 构建所有服务 |
+
+| 命令                                | 说明             |
+| ----------------------------------- | ---------------- |
+| `docker compose up -d`            | 后台启动所有服务 |
+| `docker compose down`             | 停止并删除服务   |
+| `docker compose logs -f`          | 实时日志         |
+| `docker compose exec web /bin/sh` | 进入服务容器     |
+| `docker compose build`            | 构建所有服务     |
 
 ### 系统
-| 命令 | 说明 |
-|------|------|
-| `docker system df` | 磁盘使用 |
+
+| 命令                        | 说明     |
+| --------------------------- | -------- |
+| `docker system df`        | 磁盘使用 |
 | `docker system prune -af` | 全面清理 |
-| `docker stats` | 资源监控 |
-| `docker info` | 系统信息 |
-| `docker events` | 事件流 |
+| `docker stats`            | 资源监控 |
+| `docker info`             | 系统信息 |
+| `docker events`           | 事件流   |

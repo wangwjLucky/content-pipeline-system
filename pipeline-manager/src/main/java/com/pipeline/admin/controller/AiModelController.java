@@ -20,8 +20,8 @@ public class AiModelController {
 
     @GetMapping
     public Result<Page<AiModelConfig>> list(@RequestParam(defaultValue = "1") int page,
-                                             @RequestParam(defaultValue = "20") int size,
-                                             @RequestParam(required = false) String provider) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String provider) {
         return Result.success(aiModelService.list(page, size, provider));
     }
 
@@ -53,7 +53,8 @@ public class AiModelController {
     @PostMapping("/{id}/test")
     public Result<String> test(@PathVariable Long id) {
         AiModelConfig config = aiModelService.get(id);
-        if (config == null) return Result.error(404, "模型配置不存在");
+        if (config == null)
+            return Result.error(404, "模型配置不存在");
         return Result.success("连接测试成功: " + config.getModelName());
     }
 

@@ -197,8 +197,9 @@ services:
             - "8080:8080"
         environment:
             DB_PASSWORD: ${DB_PASSWORD:-pipeline123}
-            SPRING_PROFILES_ACTIVE: dev
+            SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
             CALLBACK_TOKEN: ${CALLBACK_TOKEN:-pipeline-callback-token-change-in-prod}
+            CALLBACK_BASE_URL: ${CALLBACK_BASE_URL:-http://pipeline-admin:8080}
             spring.datasource.url: jdbc:postgresql://postgres:5432/pipeline
             spring.datasource.username: pipeline
             spring.datasource.password: ${DB_PASSWORD:-pipeline123}
@@ -235,7 +236,7 @@ services:
         restart: unless-stopped
 
 volumes:
-    postgres_data:
-    redis_data:
-    minio_data:
-    rabbitmq_data:
+    postgres_data:    # 数据库文件，容器删了重建数据还在
+    redis_data:       # Redis 缓存数据
+    minio_data:       # 对象存储文件（图片、视频等素材）
+    rabbitmq_data:    # 消息队列数据（未消费的消息等）

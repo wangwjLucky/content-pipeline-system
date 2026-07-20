@@ -1,7 +1,7 @@
 # 内容生产流水线系统 — 技术设计方案
 
-> 版本：v1.1  
-> 日期：2026-07-19  
+> 版本：v1.1
+> 日期：2026-07-19
 > 状态：已更新（同步代码 v1.1）
 
 ---
@@ -44,13 +44,13 @@
 
 ### 1.2 架构原则
 
-| 原则 | 说明 |
-|------|------|
-| **Java 做平台，Python 做 AI** | Java 负责所有业务逻辑和后台管理，Python 只负责 AI 相关能力 |
-| **服务解耦** | Java 与 Python 通过 REST API + 消息队列通信，互不依赖内部实现 |
-| **状态驱动** | 所有任务通过状态机流转，每一步状态变更都持久化到数据库 |
-| **异步编排** | 视频生产是长流程，全部异步处理，通过 MQ 驱动下游 |
-| **AI Gateway** | 统一 AI 模型调用入口，新增模型无需改业务代码 |
+| 原则                                | 说明                                                          |
+| ----------------------------------- | ------------------------------------------------------------- |
+| **Java 做平台，Python 做 AI** | Java 负责所有业务逻辑和后台管理，Python 只负责 AI 相关能力    |
+| **服务解耦**                  | Java 与 Python 通过 REST API + 消息队列通信，互不依赖内部实现 |
+| **状态驱动**                  | 所有任务通过状态机流转，每一步状态变更都持久化到数据库        |
+| **异步编排**                  | 视频生产是长流程，全部异步处理，通过 MQ 驱动下游              |
+| **AI Gateway**                | 统一 AI 模型调用入口，新增模型无需改业务代码                  |
 
 ---
 
@@ -58,55 +58,55 @@
 
 ### 2.1 Java 平台（核心后台）
 
-| 组件 | 技术选型 | 说明 |
-|------|----------|------|
-| 框架 | Spring Boot 3.x | 最新稳定版，GraalVM 支持 |
-| JDK | Java 17 | LTS 版本，虚拟线程支持 |
-| ORM | MyBatis Plus | 熟悉度高，开发效率好 |
-| 数据库 | PostgreSQL 16+ | JSONB、全文检索、性能优异 |
-| 缓存 | Redis 7+ | 热点数据、任务队列、分布式锁 |
-| 对象存储 | MinIO | S3 兼容，私有化部署 |
-| 消息队列 | RabbitMQ | 稳定可靠，适合中小规模 |
-| 认证 | Spring Security + JWT | RBAC 权限模型 |
-| 接口文档 | Knife4j (Swagger) | OpenAPI 3 规范，`SwaggerConfig.java` 配置，访问 `/doc.html` 或 `/swagger-ui/index.html` |
-| 定时任务 | XXL-JOB / Spring Scheduler | 分布式定时任务 |
-| 监控 | Prometheus + Grafana | JVM 指标、业务指标 |
+| 组件     | 技术选型                   | 说明                                                                                          |
+| -------- | -------------------------- | --------------------------------------------------------------------------------------------- |
+| 框架     | Spring Boot 3.x            | 最新稳定版，GraalVM 支持                                                                      |
+| JDK      | Java 17                    | LTS 版本，虚拟线程支持                                                                        |
+| ORM      | MyBatis Plus               | 熟悉度高，开发效率好                                                                          |
+| 数据库   | PostgreSQL 16+             | JSONB、全文检索、性能优异                                                                     |
+| 缓存     | Redis 7+                   | 热点数据、任务队列、分布式锁                                                                  |
+| 对象存储 | MinIO                      | S3 兼容，私有化部署                                                                           |
+| 消息队列 | RabbitMQ                   | 稳定可靠，适合中小规模                                                                        |
+| 认证     | Spring Security + JWT      | RBAC 权限模型                                                                                 |
+| 接口文档 | Knife4j (Swagger)          | OpenAPI 3 规范，`SwaggerConfig.java` 配置，访问 `/doc.html` 或 `/swagger-ui/index.html` |
+| 定时任务 | XXL-JOB / Spring Scheduler | 分布式定时任务                                                                                |
+| 监控     | Prometheus + Grafana       | JVM 指标、业务指标                                                                            |
 
 ### 2.2 Python AI 服务层
 
-| 组件 | 技术选型 | 说明 |
-|------|----------|------|
-| Web 框架 | FastAPI | 异步原生，自动生成 OpenAPI 文档 |
-| Python | 3.12+ | 最新稳定版 |
-| AI SDK | OpenAI / Anthropic / Google AI SDK | 官方 Python SDK |
-| 视频生成 | 可灵 API / Veo API / 即梦 API | REST API 调用 |
-| 音视频处理 | FFmpeg (subprocess) | 剪辑合成核心 |
-| 图片处理 | Pillow / OpenCV | 封面生成、图片处理 |
-| 字幕生成 | Whisper (本地或 API) | 语音转文字 |
-| 异步任务 | Celery / Arq | Python 异步任务队列（可选） |
-| HTTP 客户端 | httpx | 异步 HTTP 请求 |
+| 组件        | 技术选型                           | 说明                            |
+| ----------- | ---------------------------------- | ------------------------------- |
+| Web 框架    | FastAPI                            | 异步原生，自动生成 OpenAPI 文档 |
+| Python      | 3.12+                              | 最新稳定版                      |
+| AI SDK      | OpenAI / Anthropic / Google AI SDK | 官方 Python SDK                 |
+| 视频生成    | 可灵 API / Veo API / 即梦 API      | REST API 调用                   |
+| 音视频处理  | FFmpeg (subprocess)                | 剪辑合成核心                    |
+| 图片处理    | Pillow / OpenCV                    | 封面生成、图片处理              |
+| 字幕生成    | Whisper (本地或 API)               | 语音转文字                      |
+| 异步任务    | Celery / Arq                       | Python 异步任务队列（可选）     |
+| HTTP 客户端 | httpx                              | 异步 HTTP 请求                  |
 
 ### 2.3 前端
 
-| 组件 | 技术选型 | 说明 |
-|------|----------|------|
-| 框架 | Vue 3 + Composition API | 现代前端框架 |
-| UI 库 | Ant Design Vue 4.x | 成熟的企业级组件库（实际选型） |
-| 状态管理 | Pinia | Vue 3 官方推荐 |
-| 路由 | Vue Router 4 | SPA 路由 |
-| 构建 | Vite | 极速开发体验 |
-| HTTP | Axios | HTTP 客户端封装 |
-| 图表 | ECharts | 数据分析可视化 |
+| 组件     | 技术选型                | 说明                           |
+| -------- | ----------------------- | ------------------------------ |
+| 框架     | Vue 3 + Composition API | 现代前端框架                   |
+| UI 库    | Ant Design Vue 4.x      | 成熟的企业级组件库（实际选型） |
+| 状态管理 | Pinia                   | Vue 3 官方推荐                 |
+| 路由     | Vue Router 4            | SPA 路由                       |
+| 构建     | Vite                    | 极速开发体验                   |
+| HTTP     | Axios                   | HTTP 客户端封装                |
+| 图表     | ECharts                 | 数据分析可视化                 |
 
 ### 2.4 DevOps
 
-| 组件 | 技术选型 |
-|------|----------|
-| 容器化 | Docker + Docker Compose |
-| 镜像仓库 | Harbor / Docker Registry |
-| CI/CD | GitLab CI / GitHub Actions |
-| 日志 | ELK / Loki + Grafana |
-| 监控 | Prometheus + Grafana |
+| 组件     | 技术选型                   |
+| -------- | -------------------------- |
+| 容器化   | Docker + Docker Compose    |
+| 镜像仓库 | Harbor / Docker Registry   |
+| CI/CD    | GitLab CI / GitHub Actions |
+| 日志     | ELK / Loki + Grafana       |
+| 监控     | Prometheus + Grafana       |
 
 ---
 
@@ -487,22 +487,27 @@ DELETE /api/v1/files                      # 删除文件
 ```
 
 # 模板管理
+
 CRUD   /api/v1/templates                  # Prompt 模板 CRUD
 
 # 模型配置
+
 CRUD   /api/v1/ai-models                  # AI 模型配置 CRUD
 POST   /api/v1/ai-models/{id}/test        # 测试模型连接
 
 # 系统管理
+
 CRUD   /api/v1/users                      # 用户管理
 CRUD   /api/v1/roles                      # 角色管理
 POST   /api/v1/platform-accounts          # 平台账号管理
+
 ```
 
 ### 5.2 Python AI 服务 API（FastAPI）
-
 ```
+
 # AI Gateway — 统一模型调用（gateway/routers/）
+
 POST   /ai/v1/chat               # LLM 对话（自动匹配 Provider）
 POST   /ai/v1/chat/{provider}    # 按 Provider 调用
 POST   /ai/v1/generate           # 通用生成
@@ -510,25 +515,31 @@ POST   /ai/v1/embedding          # 向量化（预留）
 GET    /ai/v1/models             # 模型列表（按 Provider 分组，含中文名映射）
 
 # 脚本生成（gateway/routers/script.py）
+
 POST   /ai/v1/script/generate    # 生成脚本
 POST   /ai/v1/script/rewrite     # 重写脚本
 
 # Prompt 生成（gateway/routers/prompt.py）
+
 POST   /ai/v1/prompt/generate    # 分镜拆分
 
 # 视频生成（gateway/routers/video.py）
+
 POST   /ai/v1/video/generate     # 生成视频
 GET    /ai/v1/video/{task_id}    # 查询视频生成状态
 
 # 图片生成（gateway/routers/image.py）
+
 POST   /ai/v1/image/generate     # 生成图片
 
 # 配音服务（gateway/routers/voice.py）
+
 POST   /ai/v1/voice/generate     # 生成配音
 POST   /ai/v1/voice/clone        # 克隆声音
 GET    /ai/v1/voice/{task_id}    # 查询配音状态
 
 # FFmpeg 剪辑服务（gateway/routers/ffmpeg.py）
+
 POST   /ai/v1/ffmpeg/composite   # 视频合成
 POST   /ai/v1/ffmpeg/subtitle    # 字幕生成
 POST   /ai/v1/ffmpeg/cover       # 封面生成
@@ -536,12 +547,14 @@ POST   /ai/v1/ffmpeg/audio       # 音频处理
 GET    /ai/v1/ffmpeg/{task_id}   # 查询合成进度
 
 # 各服务健康检查
+
 GET    /health                    # 所有服务统一返回 {"status": "UP"|"ok", "service": "..."}
+
 ```
 
 ### 5.3 Java 调用 Python 的接口约定
-
 ```
+
 Java → RabbitMQ → Python
 Java ← HTTP Callback (POST /api/v1/tasks/callback) ← Python
 
@@ -553,6 +566,7 @@ Callback Body:
   "data": { ... },        // 成功时的结果数据
   "error": "..."          // 失败时的错误信息
 }
+
 ```
 
 ---
@@ -560,8 +574,8 @@ Callback Body:
 ## 6. AI Gateway 设计
 
 ### 6.1 架构
-
 ```
+
 Python AI Gateway（:8001）
      │
      ├── OpenAI (GPT-4o, GPT-4o-mini, GPT-4.1)
@@ -571,6 +585,7 @@ Python AI Gateway（:8001）
      ├── 可灵 AI (视频生成, 动态拉取模型列表)
      ├── Google Veo (视频生成, 动态拉取模型列表)
      └── 豆包 (TTS 配音, 动态拉取模型列表)
+
 ```
 
 **Provider 注册表（`gateway/providers/registry.py`）**：所有 Provider 实例统一管理，通过 `init_providers()` 初始化（幂等），`get_providers()` / `get_provider()` 获取共享实例。`refresh_all_models()` 使用 `asyncio.gather` 并行刷新所有已配置 API Key 的 Provider 模型列表。API Key 未配置的 Provider 模型列表为空，不会出现在模型列表中。服务关闭时调用 `shutdown()` 释放所有 HTTP 连接。
@@ -630,17 +645,17 @@ Python AI Gateway（:8001）
 
 所有队列声明在 `RabbitConfig.java`，使用 `QueueBuilder.durable()` 持久化队列，并配置死信交换机（DLX）。
 
-| 队列名称 | 类型 | 消费者 | 说明 |
-|----------|------|--------|------|
-| `pipeline.script.generate` | Direct | Python | 脚本生成任务（已投入使用） |
-| `pipeline.prompt.generate` | Direct | Python | Prompt 生成任务（已投入使用） |
-| `pipeline.video.generate` | Direct | Python | 视频生成任务（已投入使用） |
-| `pipeline.image.generate` | Direct | Python | 图片生成任务（已投入使用） |
-| `pipeline.voice.generate` | Direct | Python | 配音生成任务（已投入使用） |
-| `pipeline.ffmpeg.compile` | Direct | Python | 剪辑合成任务（已投入使用） |
-| `pipeline.task.create` | Direct | 预留 | 新任务创建事件（框架声明，尚未投入使用） |
-| `pipeline.task.callback` | Direct | 预留 | Python 回调结果（框架声明，尚未投入使用） |
-| `pipeline.dlq.task` | Direct | — | 死信队列，绑定到 `pipeline.dlx` 交换机 |
+| 队列名称                     | 类型   | 消费者 | 说明                                      |
+| ---------------------------- | ------ | ------ | ----------------------------------------- |
+| `pipeline.script.generate` | Direct | Python | 脚本生成任务（已投入使用）                |
+| `pipeline.prompt.generate` | Direct | Python | Prompt 生成任务（已投入使用）             |
+| `pipeline.video.generate`  | Direct | Python | 视频生成任务（已投入使用）                |
+| `pipeline.image.generate`  | Direct | Python | 图片生成任务（已投入使用）                |
+| `pipeline.voice.generate`  | Direct | Python | 配音生成任务（已投入使用）                |
+| `pipeline.ffmpeg.compile`  | Direct | Python | 剪辑合成任务（已投入使用）                |
+| `pipeline.task.create`     | Direct | 预留   | 新任务创建事件（框架声明，尚未投入使用）  |
+| `pipeline.task.callback`   | Direct | 预留   | Python 回调结果（框架声明，尚未投入使用） |
+| `pipeline.dlq.task`        | Direct | —     | 死信队列，绑定到`pipeline.dlx` 交换机   |
 
 ### 7.2 死信机制
 
@@ -762,15 +777,15 @@ script.generate ── callback ──► script_review (人工)
 
 Bucket 配置在 `MinIOConfig.java` 中，通过 `@ConfigurationProperties(prefix = "minio")` 绑定：
 
-| Bucket 名称 | 配置属性 | 说明 | 生命周期 |
-|-------------|---------|------|----------|
-| `pipeline-scripts` | `minio.bucket-scripts` | 脚本文件 | 永久 |
-| `pipeline-images` | `minio.bucket-images` | 生成的图片素材 | 30 天后可清理 |
-| `pipeline-videos-raw` | `minio.bucket-videos-raw` | AI 生成的原始视频片段 | 7 天后可清理 |
-| `pipeline-videos-final` | `minio.bucket-videos-final` | 最终合成的成片 | 永久 |
-| `pipeline-voices` | `minio.bucket-voices` | 配音音频 | 永久 |
-| `pipeline-covers` | `minio.bucket-covers` | 封面图片 | 永久 |
-| `pipeline-temp` | `minio.bucket-temp` | 临时文件 | 24 小时自动清理 |
+| Bucket 名称               | 配置属性                      | 说明                  | 生命周期        |
+| ------------------------- | ----------------------------- | --------------------- | --------------- |
+| `pipeline-scripts`      | `minio.bucket-scripts`      | 脚本文件              | 永久            |
+| `pipeline-images`       | `minio.bucket-images`       | 生成的图片素材        | 30 天后可清理   |
+| `pipeline-videos-raw`   | `minio.bucket-videos-raw`   | AI 生成的原始视频片段 | 7 天后可清理    |
+| `pipeline-videos-final` | `minio.bucket-videos-final` | 最终合成的成片        | 永久            |
+| `pipeline-voices`       | `minio.bucket-voices`       | 配音音频              | 永久            |
+| `pipeline-covers`       | `minio.bucket-covers`       | 封面图片              | 永久            |
+| `pipeline-temp`         | `minio.bucket-temp`         | 临时文件              | 24 小时自动清理 |
 
 **Java 端实现**：使用 AWS SDK for Java v2 (`S3Client`)，配置 `forcePathStyle=true` 以兼容 MinIO 的非 AWS 路径格式。Python 端使用 `boto3`（S3 兼容接口）。两者均可通过修改 `endpoint` 切换存储服务（MinIO / AWS S3 / 阿里云 OSS / 腾讯 COS），无需改动代码。
 
@@ -827,11 +842,11 @@ covers/123/20260716_cover.png
 
 `GlobalExceptionHandler`（`@RestControllerAdvice`）统一拦截异常，返回标准 `Result` 格式：
 
-| 异常类型 | HTTP 状态码 | 说明 |
-|---------|------------|------|
-| `MethodArgumentNotValidException` | 400 | 参数校验失败（`@Valid` 注解） |
-| `BindException` | 400 | 参数绑定失败 |
-| `HttpMessageNotReadableException` | 400 | 请求体 JSON 格式错误 |
-| `IllegalArgumentException` | 400 | 参数非法（如任务不存在） |
-| `IllegalStateException` | 400 | 状态机非法转换 |
-| `Exception`（兜底） | 500 | 未捕获的服务器内部错误 |
+| 异常类型                            | HTTP 状态码 | 说明                            |
+| ----------------------------------- | ----------- | ------------------------------- |
+| `MethodArgumentNotValidException` | 400         | 参数校验失败（`@Valid` 注解） |
+| `BindException`                   | 400         | 参数绑定失败                    |
+| `HttpMessageNotReadableException` | 400         | 请求体 JSON 格式错误            |
+| `IllegalArgumentException`        | 400         | 参数非法（如任务不存在）        |
+| `IllegalStateException`           | 400         | 状态机非法转换                  |
+| `Exception`（兜底）               | 500         | 未捕获的服务器内部错误          |

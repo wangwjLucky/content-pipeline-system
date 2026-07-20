@@ -1,3 +1,5 @@
+* [ ] 
+
 # 内容生产流水线系统 — 配置体系文档
 
 > 版本：v1.1 | 日期：2026-07-19
@@ -84,6 +86,7 @@
 
 > **⚠️ 本地开发常见问题**：`Settings()` 从**当前工作目录**查找 `.env` 文件，不是从 `common/config.py` 所在目录。
 > 因此：
+>
 > - 运行 `cd ai-services && python -m gateway.main` → 需要 `ai-services/.env`
 > - 运行 `cd ai-services/gateway && python main.py` → 需要 `ai-services/gateway/.env`（不推荐，`common` 模块找不到）
 >
@@ -275,25 +278,25 @@ settings = Settings()  # 全局单例，各服务共享
 
 #### AI Gateway（`ai-services/gateway/.env`）
 
-| 变量                           | 用途                       | 本地值                                     | Docker 值                                        |
-| ------------------------------ | -------------------------- | ------------------------------------------ | ------------------------------------------------ |
-| `PIPELINE_RABBITMQ_HOST`     | RabbitMQ 地址              | `localhost`                              | `rabbitmq`（由 `environment` 覆盖）          |
-| `PIPELINE_RABBITMQ_PORT`     | RabbitMQ 端口              | `5672`                                   | `5672`                                         |
-| `PIPELINE_RABBITMQ_USERNAME` | RabbitMQ 用户              | `pipeline`                               | `pipeline`                                     |
-| `PIPELINE_RABBITMQ_PASSWORD` | RabbitMQ 密码              | `pipeline123`                            | `pipeline123`                                  |
-| `PIPELINE_MINIO_ENDPOINT`    | MinIO 地址                 | `http://localhost:9000`                  | `http://minio:9000`（由 `environment` 覆盖） |
-| `PIPELINE_MINIO_ACCESS_KEY`  | MinIO 访问密钥             | `pipeline`                               | `pipeline`                                     |
-| `PIPELINE_MINIO_SECRET_KEY`  | MinIO 秘密密钥             | `pipeline123`                            | `pipeline123`                                  |
-| `PIPELINE_DEEPSEEK_API_KEY`  | DeepSeek API Key           | `sk-xxx`                                 | `sk-xxx`                                       |
-| `PIPELINE_OPENAI_API_KEY`    | OpenAI API Key             | （空）                                     | （空）                                           |
-| `PIPELINE_ANTHROPIC_API_KEY` | Anthropic API Key          | （空）                                     | （空）                                           |
-| `PIPELINE_SENSENOVA_API_KEY` | SenseNova API Key          | `sk-xxx`                                 | `sk-xxx`                                       |
-| `PIPELINE_KELING_API_KEY`   | 可灵 AI 视频生成 API Key   | `sk-xxx`                                 | `sk-xxx`                                       |
-| `PIPELINE_DOUBAO_API_KEY`   | 豆包 TTS API Key           | `sk-xxx`                                 | `sk-xxx`                                       |
-| `PIPELINE_VEO_API_KEY`     | Google Veo 视频生成 API Key | `sk-xxx`                                 | `sk-xxx`                                       |
-| `PIPELINE_GATEWAY_URL`       | 自身地址（供其他服务调用） | `http://ai-gateway:8001`                 | `http://ai-gateway:8001`                       |
-| `PIPELINE_CALLBACK_TOKEN`    | 回调认证令牌               | `pipeline-callback-token-change-in-prod` | 由`${CALLBACK_TOKEN}` 注入                     |
-| `PIPELINE_DEBUG`             | 调试模式                   | `false`                                  | `false`                                        |
+| 变量                           | 用途                        | 本地值                                     | Docker 值                                        |
+| ------------------------------ | --------------------------- | ------------------------------------------ | ------------------------------------------------ |
+| `PIPELINE_RABBITMQ_HOST`     | RabbitMQ 地址               | `localhost`                              | `rabbitmq`（由 `environment` 覆盖）          |
+| `PIPELINE_RABBITMQ_PORT`     | RabbitMQ 端口               | `5672`                                   | `5672`                                         |
+| `PIPELINE_RABBITMQ_USERNAME` | RabbitMQ 用户               | `pipeline`                               | `pipeline`                                     |
+| `PIPELINE_RABBITMQ_PASSWORD` | RabbitMQ 密码               | `pipeline123`                            | `pipeline123`                                  |
+| `PIPELINE_MINIO_ENDPOINT`    | MinIO 地址                  | `http://localhost:9000`                  | `http://minio:9000`（由 `environment` 覆盖） |
+| `PIPELINE_MINIO_ACCESS_KEY`  | MinIO 访问密钥              | `pipeline`                               | `pipeline`                                     |
+| `PIPELINE_MINIO_SECRET_KEY`  | MinIO 秘密密钥              | `pipeline123`                            | `pipeline123`                                  |
+| `PIPELINE_DEEPSEEK_API_KEY`  | DeepSeek API Key            | `sk-xxx`                                 | `sk-xxx`                                       |
+| `PIPELINE_OPENAI_API_KEY`    | OpenAI API Key              | （空）                                     | （空）                                           |
+| `PIPELINE_ANTHROPIC_API_KEY` | Anthropic API Key           | （空）                                     | （空）                                           |
+| `PIPELINE_SENSENOVA_API_KEY` | SenseNova API Key           | `sk-xxx`                                 | `sk-xxx`                                       |
+| `PIPELINE_KELING_API_KEY`    | 可灵 AI 视频生成 API Key    | `sk-xxx`                                 | `sk-xxx`                                       |
+| `PIPELINE_DOUBAO_API_KEY`    | 豆包 TTS API Key            | `sk-xxx`                                 | `sk-xxx`                                       |
+| `PIPELINE_VEO_API_KEY`       | Google Veo 视频生成 API Key | `sk-xxx`                                 | `sk-xxx`                                       |
+| `PIPELINE_GATEWAY_URL`       | 自身地址（供其他服务调用）  | `http://ai-gateway:8001`                 | `http://ai-gateway:8001`                       |
+| `PIPELINE_CALLBACK_TOKEN`    | 回调认证令牌                | `pipeline-callback-token-change-in-prod` | 由`${CALLBACK_TOKEN}` 注入                     |
+| `PIPELINE_DEBUG`             | 调试模式                    | `false`                                  | `false`                                        |
 
 **Gateway 是唯一需要 AI API Key 的服务**，其他 Python 服务通过调用 Gateway 的 HTTP API 来使用 AI 能力。
 
@@ -507,27 +510,27 @@ docker compose up -d
 
 ### 7.1 Python 服务（PIPELINE_ 前缀）
 
-| 环境变量                       | 类型     | 默认值                                     | 使用方          | 说明              |
-| ------------------------------ | -------- | ------------------------------------------ | --------------- | ----------------- |
-| `PIPELINE_APP_NAME`          | `str`  | `content-pipeline`                       | 所有服务        | 应用名称          |
-| `PIPELINE_DEBUG`             | `bool` | `False`                                  | 所有服务        | 调试模式          |
-| `PIPELINE_RABBITMQ_HOST`     | `str`  | `localhost`                              | 所有服务        | RabbitMQ 地址     |
-| `PIPELINE_RABBITMQ_PORT`     | `int`  | `5672`                                   | 所有服务        | RabbitMQ 端口     |
-| `PIPELINE_RABBITMQ_USERNAME` | `str`  | `pipeline`                               | 所有服务        | RabbitMQ 用户     |
-| `PIPELINE_RABBITMQ_PASSWORD` | `str`  | `pipeline123`                            | 所有服务        | RabbitMQ 密码     |
-| `PIPELINE_MINIO_ENDPOINT`    | `str`  | `http://localhost:9000`                  | gateway, image  | MinIO 地址        |
-| `PIPELINE_MINIO_ACCESS_KEY`  | `str`  | `pipeline`                               | gateway, image  | MinIO 访问密钥    |
-| `PIPELINE_MINIO_SECRET_KEY`  | `str`  | `pipeline123`                            | gateway, image  | MinIO 秘密密钥    |
-| `PIPELINE_GATEWAY_URL`       | `str`  | `http://ai-gateway:8001`                 | 非 gateway 服务 | AI Gateway 地址   |
-| `PIPELINE_OPENAI_API_KEY`    | `str`  | `""`                                     | gateway         | OpenAI API Key    |
-| `PIPELINE_ANTHROPIC_API_KEY` | `str`  | `""`                                     | gateway         | Anthropic API Key |
-| `PIPELINE_DEEPSEEK_API_KEY`  | `str`  | `""`                                     | gateway         | DeepSeek API Key  |
-| `PIPELINE_SENSENOVA_API_KEY` | `str`  | `""`                                     | gateway         | SenseNova API Key |
-| `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key |
-| `PIPELINE_DOUBAO_API_KEY`    | `str`  | `""`                                     | gateway         | 豆包 TTS API Key |
-| `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key |
+| 环境变量                       | 类型     | 默认值                                     | 使用方          | 说明                        |
+| ------------------------------ | -------- | ------------------------------------------ | --------------- | --------------------------- |
+| `PIPELINE_APP_NAME`          | `str`  | `content-pipeline`                       | 所有服务        | 应用名称                    |
+| `PIPELINE_DEBUG`             | `bool` | `False`                                  | 所有服务        | 调试模式                    |
+| `PIPELINE_RABBITMQ_HOST`     | `str`  | `localhost`                              | 所有服务        | RabbitMQ 地址               |
+| `PIPELINE_RABBITMQ_PORT`     | `int`  | `5672`                                   | 所有服务        | RabbitMQ 端口               |
+| `PIPELINE_RABBITMQ_USERNAME` | `str`  | `pipeline`                               | 所有服务        | RabbitMQ 用户               |
+| `PIPELINE_RABBITMQ_PASSWORD` | `str`  | `pipeline123`                            | 所有服务        | RabbitMQ 密码               |
+| `PIPELINE_MINIO_ENDPOINT`    | `str`  | `http://localhost:9000`                  | gateway, image  | MinIO 地址                  |
+| `PIPELINE_MINIO_ACCESS_KEY`  | `str`  | `pipeline`                               | gateway, image  | MinIO 访问密钥              |
+| `PIPELINE_MINIO_SECRET_KEY`  | `str`  | `pipeline123`                            | gateway, image  | MinIO 秘密密钥              |
+| `PIPELINE_GATEWAY_URL`       | `str`  | `http://ai-gateway:8001`                 | 非 gateway 服务 | AI Gateway 地址             |
+| `PIPELINE_OPENAI_API_KEY`    | `str`  | `""`                                     | gateway         | OpenAI API Key              |
+| `PIPELINE_ANTHROPIC_API_KEY` | `str`  | `""`                                     | gateway         | Anthropic API Key           |
+| `PIPELINE_DEEPSEEK_API_KEY`  | `str`  | `""`                                     | gateway         | DeepSeek API Key            |
+| `PIPELINE_SENSENOVA_API_KEY` | `str`  | `""`                                     | gateway         | SenseNova API Key           |
+| `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key    |
+| `PIPELINE_DOUBAO_API_KEY`    | `str`  | `""`                                     | gateway         | 豆包 TTS API Key            |
+| `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key    |
 | `PIPELINE_VEO_API_KEY`       | `str`  | `""`                                     | gateway         | Google Veo 视频生成 API Key |
-| `PIPELINE_CALLBACK_TOKEN`    | `str`  | `pipeline-callback-token-change-in-prod` | 所有服务        | 回调认证令牌      |
+| `PIPELINE_CALLBACK_TOKEN`    | `str`  | `pipeline-callback-token-change-in-prod` | 所有服务        | 回调认证令牌                |
 
 ### 7.2 Java 后端
 

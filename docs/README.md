@@ -4,17 +4,17 @@
 
 ## 文档列表
 
-| 文档 | 说明 |
-|------|------|
-| [架构总览](architecture.md) | 系统架构、部署拓扑、技术选型、扩展性设计 |
-| [服务说明](services-overview.md) | 每个服务的配置、功能、调用链路、状态机详解 |
-| [产品设计](product-design.md) | 产品定位、功能清单、业务流程、用户界面规划 |
-| [技术设计](technical-design.md) | 技术选型明细、API 设计、数据模型、安全设计、MQ 设计 |
-| [配置体系](configuration.md) | 配置注入链路、Python/Java 配置、环境变量清单、配置 FAQ |
-| [运维部署手册](operations.md) | **部署、启动、镜像管理、日志、排查、备份 — 非技术人员可操作** |
-| [启动指南（快速参考）](startup-guide.md) | 快速命令速查（完整内容见 operations.md） |
-| [Docker 操作指南](docker-guide.md) | Docker 镜像构建、运行、日志、卷映射等操作命令 |
-| [Docker 命令参考](docker-commands.md) | Docker CLI 命令完整手册
+| 文档                                 | 说明                                                   |
+| ------------------------------------ | ------------------------------------------------------ |
+| [架构总览](architecture.md)           | 系统架构、部署拓扑、技术选型、扩展性设计               |
+| [服务说明](services-overview.md)      | 每个服务的配置、功能、调用链路、状态机详解             |
+| [产品设计](product-design.md)         | 产品定位、功能清单、业务流程、用户界面规划             |
+| [技术设计](technical-design.md)       | 技术选型明细、API 设计、数据模型、安全设计、MQ 设计    |
+| [配置体系](configuration.md)          | 配置注入链路、Python/Java 配置、环境变量清单、配置 FAQ |
+| [运维部署手册](operations.md)         | 部署、启动、镜像管理、日志、排查、备份                 |
+| [启动指南](startup-guide.md)          | 快速命令速查（完整内容见 operations.md）               |
+| [Docker 操作指南](docker-guide.md)    | Docker 镜像构建、运行、日志、卷映射等操作命令          |
+| [Docker 命令参考](docker-commands.md) | Docker CLI 命令完整手册                                |
 
 ## 项目结构
 

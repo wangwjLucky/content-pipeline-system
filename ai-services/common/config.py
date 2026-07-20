@@ -1,20 +1,22 @@
 """
-应用配置，从环境变量读取。
+应用配置，所有配置项从环境变量读取。
 
-配置注入链路（Docker 部署）：
-  docker-compose.yml                  Docker 容器                     Python
-  ─────────────────                  ────────────                   ────────
-  environment:                       环境变量                         Pydantic Settings
-    PIPELINE_RABBITMQ_HOST: rabbitmq  →  $PIPELINE_RABBITMQ_HOST     →  settings.rabbitmq_host = "rabbitmq"
-    PIPELINE_RABBITMQ_PORT: "5672"    →  $PIPELINE_RABBITMQ_PORT     →  settings.rabbitmq_port = 5672
+## 环境变量命名规则
 
-env_prefix = "PIPELINE_" 表示查找环境变量中 PIPELINE_XXX 格式的变量，
-去掉前缀后映射到同名的字段（小写）。代码中通过 from common.config import settings
-导入后使用 settings.rabbitmq_host 读取。
+PIPELINE_XXX → 去掉 PIPELINE_ 前缀，剩下的转小写就是代码里的字段名。
+例如 PIPELINE_RABBITMQ_HOST=rabbitmq 会映射到 settings.rabbitmq_host = "rabbitmq"。
 
-env_file: ".env" 仅用于本地开发（直接 python main.py），
-Docker 内环境变量已由 docker-compose 注入，不会读 .env 文件。
+## 不同环境的配置加载
+
+加载顺序：环境变量 > .env 文件 > 代码里的默认值。
+
+- 本地开发：根据 PIPELINE_ENV 加载对应的 .env 文件
+  - PIPELINE_ENV=dev（默认）→ 加载 .env.dev
+  - PIPELINE_ENV=pro            → 加载 .env.pro
+- Docker 部署：环境变量由 docker-compose.yml 或 k8s 注入，不需要 .env 文件
 """
+
+import os
 
 from pydantic_settings import BaseSettings
 
@@ -48,7 +50,9 @@ class Settings(BaseSettings):
     # 回调认证
     callback_token: str = "pipeline-callback-token-change-in-prod"
 
-    model_config = {"env_prefix": "PIPELINE_", "env_file": ".env"}
+    model_config = {"env_prefix": "PIPELINE_"}
 
 
-settings = Settings()
+# 根据 PIPELINE_ENV 区分环境，默认 dev
+_env = os.getenv("PIPELINE_ENV", "dev")
+settings = Settings(_env_file=f".env.{_env}")

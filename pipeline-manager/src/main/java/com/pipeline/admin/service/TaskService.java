@@ -15,6 +15,11 @@ public interface TaskService {
     void updateStatus(Long taskId, String status, Integer progress, String errorMessage);
 
     /**
+     * 更新任务状态，记录失败原因。
+     */
+    void updateStatus(Long taskId, String status, Integer progress, String errorMessage, String failReason);
+
+    /**
      * 取消任务（WAIT/SCRIPTING/SCRIPT_REVIEW/... → CANCELLED）
      */
     void cancelTask(Long taskId, String operator, String comment);

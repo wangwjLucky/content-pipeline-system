@@ -30,11 +30,8 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 jwt:
-  # 生产环境务必通过 JWT_SECRET 环境变量设置强密钥
   secret: ${JWT_SECRET:pipeline-secret-key-change-in-prod}
 
-# 回调地址（供 Python AI 服务回调 Java 使用）
-# Docker 部署时改为 http://pipeline-admin:8080
 pipeline:
   callback-base-url: ${CALLBACK_BASE_URL:http://host.docker.internal:8080}
   callback-token: ${CALLBACK_TOKEN:pipeline-callback-token-change-in-prod}
@@ -44,3 +41,18 @@ minio:
   access-key: pipeline
   secret-key: pipeline123
   region: us-east-1
+
+# XXL-JOB 分布式调度
+xxl:
+  job:
+    enabled: false
+    admin:
+      addresses: http://localhost:18080/xxl-job-admin
+    accessToken:
+    executor:
+      appname: pipeline-admin
+      address:
+      ip:
+      port: 0
+      logpath: logs/xxl-job
+      logretentiondays: 30

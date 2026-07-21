@@ -1,5 +1,6 @@
 package com.pipeline.admin.controller;
 
+import com.pipeline.admin.common.OperationLog;
 import com.pipeline.admin.service.FileService;
 import com.pipeline.admin.common.Result;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +22,7 @@ public class FileController {
 
     private final FileService fileService;
 
-    /**
-     * 上传文件
-     * @param bucket 存储桶
-     * @param module 模块前缀
-     * @param taskId 任务 ID
-     */
+    @OperationLog(module = "文件管理", action = "上传")
     @PostMapping("/upload")
     public Result<Map<String, Object>> upload(
             @RequestParam String bucket,
@@ -43,9 +39,6 @@ public class FileController {
         return Result.success(data);
     }
 
-    /**
-     * 下载文件
-     */
     @GetMapping("/download")
     public ResponseEntity<byte[]> download(
             @RequestParam String bucket,
@@ -58,9 +51,6 @@ public class FileController {
                 .body(data);
     }
 
-    /**
-     * 列出文件
-     */
     @GetMapping
     public Result<List<String>> list(
             @RequestParam String bucket,
@@ -68,9 +58,7 @@ public class FileController {
         return Result.success(fileService.listFiles(bucket, prefix));
     }
 
-    /**
-     * 删除文件
-     */
+    @OperationLog(module = "文件管理", action = "删除")
     @DeleteMapping
     public Result<Void> delete(
             @RequestParam String bucket,

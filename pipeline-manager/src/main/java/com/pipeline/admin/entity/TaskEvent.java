@@ -14,6 +14,9 @@ public class TaskEvent extends BaseEntity {
     @Schema(description = "关联任务 ID")
     private Long taskId;
 
+    @Schema(description = "事件类型: TASK_CREATED/SCRIPT_GENERATED/SCRIPT_REVIEWED/STORYBOARD_READY/MATERIAL_READY/VOICE_COMPLETED/EDIT_COMPLETED/TASK_CANCELLED/TASK_RETRIED/TASK_ERRORED")
+    private String eventType;
+
     @Schema(description = "来源状态")
     private String fromStatus;
 
@@ -25,4 +28,7 @@ public class TaskEvent extends BaseEntity {
 
     @Schema(description = "备注说明")
     private String comment;
+
+    @Schema(description = "事件数据（JSON）")
+    private String payload;
 }

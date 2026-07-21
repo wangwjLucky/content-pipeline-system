@@ -35,6 +35,15 @@ public class Task extends BaseEntity {
     @Schema(description = "错误信息")
     private String errorMessage;
 
+    @Schema(description = "失败原因归类: SCRIPT_FAILED/MATERIAL_FAILED/VOICE_FAILED/EDIT_FAILED/PUBLISH_FAILED")
+    private String failReason;
+
+    @Schema(description = "重试次数")
+    private Integer retryCount;
+
+    @Schema(description = "优先级: 0-100，越高越优先处理")
+    private Integer priority;
+
     @Schema(description = "创建人")
     private Long createdBy;
 

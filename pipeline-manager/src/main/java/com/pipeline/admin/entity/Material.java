@@ -26,6 +26,24 @@ public class Material extends BaseEntity {
     @Schema(description = "素材文件地址")
     private String url;
 
+    @Schema(description = "存储桶")
+    private String bucket;
+
+    @Schema(description = "文件大小（字节）")
+    private Long fileSize;
+
+    @Schema(description = "文件 MD5 指纹")
+    private String fileMd5;
+
+    @Schema(description = "图片/视频宽度")
+    private Integer width;
+
+    @Schema(description = "图片/视频高度")
+    private Integer height;
+
+    @Schema(description = "视频/音频时长（秒）")
+    private Integer duration;
+
     @Schema(description = "生成提示词")
     private String prompt;
 

@@ -11,3 +11,12 @@ spring:
 logging:
   level:
     com.pipeline: DEBUG
+
+xxl:
+  job:
+    enabled: false
+    admin:
+      addresses: http://localhost:18080/xxl-job-admin
+    executor:
+      appname: pipeline-admin-dev
+      logpath: logs/xxl-job

@@ -4,10 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pipeline.admin.entity.Material;
 import com.pipeline.admin.entity.Storyboard;
 import com.pipeline.admin.entity.Task;
+import com.pipeline.admin.entity.VersionGraph;
 import com.pipeline.admin.mapper.MaterialMapper;
 import com.pipeline.admin.mapper.StoryboardMapper;
 import com.pipeline.admin.mapper.TaskMapper;
-import com.pipeline.admin.service.AiService;
+import com.pipeline.admin.mapper.VersionGraphMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,10 +29,18 @@ public class StoryboardServiceImpl implements StoryboardService {
     private final TaskMapper taskMapper;
     private final TaskService taskService;
     private final AiService aiService;
+    private final VersionGraphMapper versionGraphMapper;
 
     @Override
     @Transactional
     public void batchSave(Long taskId, List<Storyboard> storyboards) {
+        // 记录旧版本快照（先删后插前）
+        List<Storyboard> oldList = storyboardMapper.selectList(
+                new LambdaQueryWrapper<Storyboard>().eq(Storyboard::getTaskId, taskId));
+        String oldSnapshot = oldList.stream()
+                .map(s -> String.format("{\"seq\":%d,\"sceneType\":\"%s\",\"character\":\"%s\"}", s.getSequence(), s.getSceneType(), s.getCharacter()))
+                .collect(Collectors.joining(",", "[", "]"));
+
         // 先删除关联的素材，避免外键约束冲突
         materialMapper.delete(new LambdaQueryWrapper<Material>()
                 .eq(Material::getTaskId, taskId));
@@ -58,6 +68,17 @@ public class StoryboardServiceImpl implements StoryboardService {
             material.setStatus("PENDING");
             materialMapper.insert(material);
         }
+
+        // 记录版本历史
+        if (!oldList.isEmpty()) {
+            VersionGraph vg = new VersionGraph();
+            vg.setEntityType("STORYBOARD");
+            vg.setEntityId(taskId);
+            vg.setVersion(oldList.size() + 1);
+            vg.setSnapshot(oldSnapshot);
+            versionGraphMapper.insert(vg);
+        }
+
         log.info("分镜批量保存完成: taskId={}, count={}, 素材记录已创建", taskId, storyboards.size());
 
         // 推进任务到 GENERATING，根据 content_type 触发对应素材生成
@@ -91,7 +112,6 @@ public class StoryboardServiceImpl implements StoryboardService {
 
     @Override
     public void autoSplit(Long taskId) {
-        // 触发 AI 分镜生成（异步 MQ）
         aiService.sendPromptGenerate(taskId, Map.of("taskId", taskId));
         log.info("已触发 AI 自动分镜: taskId={}", taskId);
     }

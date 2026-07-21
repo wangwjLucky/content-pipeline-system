@@ -2,9 +2,9 @@ package com.pipeline.admin.service;
 
 import com.pipeline.admin.entity.Task;
 import com.pipeline.admin.entity.TaskEvent;
+import com.pipeline.admin.event.*;
 import com.pipeline.admin.mapper.TaskEventMapper;
 import com.pipeline.admin.mapper.TaskMapper;
-import com.pipeline.admin.service.AiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +23,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskEventMapper taskEventMapper;
     private final AiService aiService;
     private final TaskStateMachine stateMachine;
+    private final PipelineEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -39,15 +40,14 @@ public class TaskServiceImpl implements TaskService {
         task.setContentType(contentType != null ? contentType : "video");
         task.setStatus("WAIT");
         task.setProgress(0);
+        task.setRetryCount(0);
+        task.setPriority(0);
         taskMapper.insert(task);
 
-        // 记录初始事件
-        recordEvent(task.getId(), null, "WAIT", "SYSTEM", "任务创建");
+        recordEvent(task.getId(), null, "WAIT", "SYSTEM", "任务创建", "TASK_CREATED", null);
 
-        // 推进到 SCRIPTING 状态，确保回调时能正确过渡到 SCRIPT_REVIEW
         updateStatus(task.getId(), "SCRIPTING", 10, null);
 
-        // 事务提交后再发送 MQ 消息，避免回滚后消息已发出
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -61,6 +61,12 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public void updateStatus(Long taskId, String newStatus, Integer progress, String errorMessage) {
+        updateStatus(taskId, newStatus, progress, errorMessage, null);
+    }
+
+    @Override
+    @Transactional
+    public void updateStatus(Long taskId, String newStatus, Integer progress, String errorMessage, String failReason) {
         Task task = taskMapper.selectById(taskId);
         if (task == null) {
             log.error("任务不存在: taskId={}", taskId);
@@ -68,7 +74,6 @@ public class TaskServiceImpl implements TaskService {
         }
 
         String oldStatus = task.getStatus();
-        // 校验状态转换
         String error = stateMachine.validate(oldStatus, newStatus);
         if (error != null) {
             throw new IllegalStateException(error);
@@ -79,16 +84,37 @@ public class TaskServiceImpl implements TaskService {
         update.setStatus(newStatus);
         if (progress != null) update.setProgress(progress);
         update.setErrorMessage(errorMessage);
-        // 乐观锁：使用当前版本号防止并发覆盖
+        update.setFailReason(failReason);
         update.setVersion(task.getVersion());
         int rows = taskMapper.updateById(update);
         if (rows == 0) {
             throw new IllegalStateException("任务状态更新失败，数据已被其他操作修改: taskId=" + taskId);
         }
 
-        // 记录事件
-        recordEvent(taskId, oldStatus, newStatus, "SYSTEM", null);
-        log.info("任务状态更新: taskId={}, {} → {}", taskId, oldStatus, newStatus);
+        String eventType = resolveEventType(oldStatus, newStatus);
+        recordEvent(taskId, oldStatus, newStatus, "SYSTEM", null, eventType, null);
+        publishDomainEvent(taskId, oldStatus, newStatus);
+        log.info("任务状态更新: taskId={}, {} → {} ({})", taskId, oldStatus, newStatus, eventType);
+    }
+
+    private void publishDomainEvent(Long taskId, String from, String to) {
+        PipelineEvent event = null;
+        if ("SCRIPT_REVIEW".equals(to)) {
+            event = new ScriptGeneratedEvent(taskId);
+        } else if ("STORYBOARD".equals(to)) {
+            event = new ScriptReviewedEvent(taskId);
+        } else if ("GENERATING".equals(to)) {
+            event = new StoryboardReadyEvent(taskId);
+        } else if ("VOICEOVER".equals(to)) {
+            event = new MaterialReadyEvent(taskId);
+        } else if ("EDITING".equals(to)) {
+            event = new VoiceCompletedEvent(taskId);
+        } else if ("REVIEW".equals(to) && !"GENERATING".equals(from)) {
+            event = new EditCompletedEvent(taskId);
+        }
+        if (event != null) {
+            eventPublisher.publish(event);
+        }
     }
 
     @Override
@@ -114,7 +140,7 @@ public class TaskServiceImpl implements TaskService {
             throw new IllegalStateException("取消任务失败，数据已被其他操作修改: taskId=" + taskId);
         }
 
-        recordEvent(taskId, oldStatus, "CANCELLED", operator, comment);
+        recordEvent(taskId, oldStatus, "CANCELLED", operator, comment, "TASK_CANCELLED", null);
         log.info("任务已取消: taskId={}, operator={}", taskId, operator);
     }
 
@@ -132,24 +158,23 @@ public class TaskServiceImpl implements TaskService {
             throw new IllegalStateException(error);
         }
 
-        // 重置为 WAIT（清除错误状态）
         Task update = new Task();
         update.setId(taskId);
         update.setStatus("WAIT");
         update.setProgress(0);
         update.setErrorMessage(null);
+        update.setFailReason(null);
+        update.setRetryCount((task.getRetryCount() != null ? task.getRetryCount() : 0) + 1);
         update.setVersion(task.getVersion());
         int rows = taskMapper.updateById(update);
         if (rows == 0) {
             throw new IllegalStateException("重试任务失败，数据已被其他操作修改: taskId=" + taskId);
         }
 
-        recordEvent(taskId, oldStatus, "WAIT", operator, "重试");
+        recordEvent(taskId, oldStatus, "WAIT", operator, "重试", "TASK_RETRIED", null);
 
-        // 立即推进到 SCRIPTING，确保回调时状态机正确过渡
         updateStatus(taskId, "SCRIPTING", 10, null);
 
-        // 事务提交后再重新发送脚本生成消息
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -169,12 +194,32 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void recordEvent(Long taskId, String fromStatus, String toStatus, String operator, String comment) {
+        recordEvent(taskId, fromStatus, toStatus, operator, comment, null, null);
+    }
+
+    private void recordEvent(Long taskId, String fromStatus, String toStatus, String operator, String comment, String eventType, String payload) {
         TaskEvent event = new TaskEvent();
         event.setTaskId(taskId);
+        event.setEventType(eventType);
         event.setFromStatus(fromStatus);
         event.setToStatus(toStatus);
         event.setOperator(operator);
         event.setComment(comment);
+        event.setPayload(payload);
         taskEventMapper.insert(event);
+    }
+
+    private String resolveEventType(String from, String to) {
+        if (to == null) return null;
+        return switch (to) {
+            case "SCRIPT_REVIEW" -> "SCRIPT_GENERATED";
+            case "STORYBOARD" -> "SCRIPT_REVIEWED";
+            case "GENERATING" -> "STORYBOARD_READY";
+            case "VOICEOVER" -> "MATERIAL_READY";
+            case "EDITING" -> "VOICE_COMPLETED";
+            case "REVIEW" -> "EDIT_COMPLETED";
+            case "ERROR" -> "TASK_ERRORED";
+            default -> null;
+        };
     }
 }

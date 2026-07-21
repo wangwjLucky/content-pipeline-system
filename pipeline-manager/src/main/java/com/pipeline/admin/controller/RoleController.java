@@ -1,5 +1,6 @@
 package com.pipeline.admin.controller;
 
+import com.pipeline.admin.common.OperationLog;
 import com.pipeline.admin.entity.SysRole;
 import com.pipeline.admin.service.RoleService;
 import com.pipeline.admin.common.Result;
@@ -25,16 +26,19 @@ public class RoleController {
         return role != null ? Result.success(role) : Result.error(404, "角色不存在");
     }
 
+    @OperationLog(module = "角色管理", action = "创建")
     @PostMapping
     public Result<SysRole> create(@RequestBody SysRole role) {
         return Result.success(roleService.create(role));
     }
 
+    @OperationLog(module = "角色管理", action = "更新")
     @PutMapping("/{id}")
     public Result<SysRole> update(@PathVariable Long id, @RequestBody SysRole role) {
         return Result.success(roleService.update(id, role));
     }
 
+    @OperationLog(module = "角色管理", action = "删除")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         roleService.delete(id);

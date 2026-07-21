@@ -87,8 +87,9 @@ public class CallbackController {
         if ("SUCCESS".equals(status)) {
             handleSuccess(task, service, data);
         } else {
-            taskService.updateStatus(task.getId(), "ERROR", task.getProgress(), error);
-            log.error("任务处理失败: taskId={}, service={}, error={}", taskId, service, error);
+            String failReason = service != null ? service.toUpperCase() + "_FAILED" : "UNKNOWN_FAILED";
+            taskService.updateStatus(task.getId(), "ERROR", task.getProgress(), error, failReason);
+            log.error("任务处理失败: taskId={}, service={}, failReason={}, error={}", taskId, service, failReason, error);
         }
 
         return Result.success("ok");

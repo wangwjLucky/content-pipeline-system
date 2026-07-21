@@ -1,5 +1,6 @@
 package com.pipeline.admin.controller;
 
+import com.pipeline.admin.common.OperationLog;
 import com.pipeline.admin.entity.PromptTemplate;
 import com.pipeline.admin.service.TemplateService;
 import com.pipeline.admin.common.Result;
@@ -26,16 +27,19 @@ public class TemplateController {
         return template != null ? Result.success(template) : Result.error(404, "模板不存在");
     }
 
+    @OperationLog(module = "模板管理", action = "创建")
     @PostMapping
     public Result<PromptTemplate> create(@RequestBody PromptTemplate template) {
         return Result.success(templateService.create(template));
     }
 
+    @OperationLog(module = "模板管理", action = "更新")
     @PutMapping("/{id}")
     public Result<PromptTemplate> update(@PathVariable Long id, @RequestBody PromptTemplate template) {
         return Result.success(templateService.update(id, template));
     }
 
+    @OperationLog(module = "模板管理", action = "删除")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         templateService.delete(id);

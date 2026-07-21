@@ -2,9 +2,10 @@ package com.pipeline.admin.service;
 
 import com.pipeline.admin.entity.Script;
 import com.pipeline.admin.entity.Task;
+import com.pipeline.admin.entity.VersionGraph;
 import com.pipeline.admin.mapper.ScriptMapper;
 import com.pipeline.admin.mapper.TaskMapper;
-import com.pipeline.admin.service.AiService;
+import com.pipeline.admin.mapper.VersionGraphMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class ScriptServiceImpl implements ScriptService {
     private final TaskMapper taskMapper;
     private final TaskService taskService;
     private final AiService aiService;
+    private final VersionGraphMapper versionGraphMapper;
 
     @Override
     @Transactional
@@ -30,7 +32,6 @@ public class ScriptServiceImpl implements ScriptService {
         Task task = taskMapper.selectById(taskId);
         if (task == null) throw new IllegalArgumentException("任务不存在: " + taskId);
 
-        // 创建脚本记录
         Script script = new Script();
         script.setTaskId(taskId);
         script.setTopicId(task.getTopicId());
@@ -41,11 +42,9 @@ public class ScriptServiceImpl implements ScriptService {
         script.setStatus("PENDING_REVIEW");
         scriptMapper.insert(script);
 
-        // 关联脚本 ID 到任务
         task.setScriptId(script.getId());
         taskMapper.updateById(task);
 
-        // 事务提交后再发送 MQ 消息
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -64,23 +63,18 @@ public class ScriptServiceImpl implements ScriptService {
             throw new IllegalArgumentException("脚本不存在: " + scriptId);
         }
 
-        // 更新脚本状态为已批准
         script.setStatus("APPROVED");
         scriptMapper.updateById(script);
 
-        // 根据内容产出方式决定下一步
         Task task = taskMapper.selectById(script.getTaskId());
         if (task != null && "text".equals(task.getContentType())) {
-            // 纯文案：审核通过后直接进入 READY
             taskService.updateStatus(script.getTaskId(), "READY", 95, null);
             log.info("纯文案脚本已批准，进入待发布: scriptId={}, taskId={}", scriptId, script.getTaskId());
             return;
         }
 
-        // 推进任务到 STORYBOARD
         taskService.updateStatus(script.getTaskId(), "STORYBOARD", 40, null);
 
-        // 事务提交后再触发 AI 分镜生成
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -101,13 +95,9 @@ public class ScriptServiceImpl implements ScriptService {
             throw new IllegalArgumentException("脚本不存在: " + scriptId);
         }
 
-        // 更新脚本状态为已驳回
         script.setStatus("REJECTED");
         scriptMapper.updateById(script);
 
-        // 根据当前任务状态决定目标状态：
-        // - SCRIPT_REVIEW: 初次审核驳回 → WAIT（重新生成脚本）
-        // - STORYBOARD/GENERATING/VOICEOVER: 后续驳回 → SCRIPT_REVIEW（重新审核）
         Task currentTask = taskMapper.selectById(script.getTaskId());
         String targetStatus = "WAIT";
         int targetProgress = 0;
@@ -127,15 +117,22 @@ public class ScriptServiceImpl implements ScriptService {
             throw new IllegalArgumentException("脚本不存在: " + scriptId);
         }
 
-        // 更新内容（@Version 注解自动处理版本号递增）
+        int oldVersion = script.getVersion() != null ? script.getVersion() : 1;
         script.setContent(content);
         script.setSubtitle(subtitle);
-        // 编辑后需要重新审核
         script.setStatus("PENDING_REVIEW");
         scriptMapper.updateById(script);
 
-        // 回退任务状态到 SCRIPT_REVIEW（如果当前在 STORYBOARD 或后续状态）
-        // 先检查当前任务状态，避免对已是 SCRIPT_REVIEW 的任务做无效转换
+        // 记录版本历史
+        VersionGraph vg = new VersionGraph();
+        vg.setEntityType("SCRIPT");
+        vg.setEntityId(scriptId);
+        vg.setVersion(oldVersion + 1);
+        vg.setParentVersionId(null);
+        vg.setSnapshot(String.format("{\"content\":\"%s\",\"subtitle\":\"%s\"}", content, subtitle));
+        vg.setCreatedBy(editorId);
+        versionGraphMapper.insert(vg);
+
         Task currentTask = taskMapper.selectById(script.getTaskId());
         if (currentTask != null && !"SCRIPT_REVIEW".equals(currentTask.getStatus())) {
             taskService.updateStatus(script.getTaskId(), "SCRIPT_REVIEW", 30, null);

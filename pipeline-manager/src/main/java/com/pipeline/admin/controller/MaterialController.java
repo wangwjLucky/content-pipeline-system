@@ -1,5 +1,6 @@
 package com.pipeline.admin.controller;
 
+import com.pipeline.admin.common.OperationLog;
 import com.pipeline.admin.entity.Material;
 import com.pipeline.admin.service.MaterialService;
 import com.pipeline.admin.common.Result;
@@ -27,12 +28,14 @@ public class MaterialController {
         return material != null ? Result.success(material) : Result.error(404, "素材不存在");
     }
 
+    @OperationLog(module = "素材管理", action = "删除")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         materialService.delete(id);
         return Result.success(null);
     }
 
+    @OperationLog(module = "素材管理", action = "批量生成")
     @PostMapping("/batch-generate")
     public Result<Void> batchGenerate(@RequestParam Long taskId) {
         materialService.batchGenerate(taskId);

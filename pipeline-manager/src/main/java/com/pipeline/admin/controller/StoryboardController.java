@@ -1,5 +1,6 @@
 package com.pipeline.admin.controller;
 
+import com.pipeline.admin.common.OperationLog;
 import com.pipeline.admin.entity.Storyboard;
 import com.pipeline.admin.service.StoryboardService;
 import com.pipeline.admin.common.Result;
@@ -19,12 +20,14 @@ public class StoryboardController {
         return Result.success(storyboardService.getByTaskId(taskId));
     }
 
+    @OperationLog(module = "分镜管理", action = "批量保存")
     @PutMapping
     public Result<Void> batchSave(@PathVariable Long taskId, @RequestBody List<Storyboard> storyboards) {
         storyboardService.batchSave(taskId, storyboards);
         return Result.success(null);
     }
 
+    @OperationLog(module = "分镜管理", action = "AI 自动拆分")
     @PostMapping("/auto-split")
     public Result<Void> autoSplit(@PathVariable Long taskId) {
         storyboardService.autoSplit(taskId);

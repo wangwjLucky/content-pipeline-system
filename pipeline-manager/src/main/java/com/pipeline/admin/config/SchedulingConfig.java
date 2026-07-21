@@ -6,6 +6,7 @@ import com.pipeline.admin.mapper.PublishLogMapper;
 import com.pipeline.admin.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,20 +15,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 /**
- * 定时任务配置，用于定时发布等功能。
- * 符合技术文档 2.1 节 Spring Scheduler 的技术选型。
+ * Spring 内置定时任务，用于定时发布等功能。
+ * 当 XXL-JOB 启用时（xxl.job.enabled=true），可通过配置关闭此调度器避免冲突。
  */
 @Slf4j
 @Configuration
 @EnableScheduling
+@ConditionalOnProperty(name = "xxl.job.enabled", havingValue = "false", matchIfMissing = true)
 @RequiredArgsConstructor
 public class SchedulingConfig {
     private final PublishLogMapper publishLogMapper;
     private final TaskService taskService;
 
-    /**
-     * 每分钟检查一次是否有到期的定时发布任务。
-     */
     @Scheduled(fixedRate = 60000)
     @Transactional
     public void processScheduledPublishes() {
@@ -40,12 +39,9 @@ public class SchedulingConfig {
 
         for (PublishLog task : tasks) {
             try {
-                // 更新状态为已发布
                 task.setStatus("PUBLISHED");
                 task.setPublishedAt(LocalDateTime.now());
                 publishLogMapper.updateById(task);
-
-                // 推进任务状态
                 taskService.updateStatus(task.getTaskId(), "PUBLISHED", 100, null);
                 log.info("定时发布完成: publishId={}, taskId={}", task.getId(), task.getTaskId());
             } catch (Exception e) {

@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pipeline.admin.common.OperationLog;
 import com.pipeline.admin.entity.Script;
+import com.pipeline.admin.entity.VersionGraph;
 import com.pipeline.admin.mapper.ScriptMapper;
+import com.pipeline.admin.mapper.VersionGraphMapper;
 import com.pipeline.admin.service.ScriptService;
 import com.pipeline.admin.common.Result;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import java.util.Map;
 public class ScriptController {
     private final ScriptMapper scriptMapper;
     private final ScriptService scriptService;
+    private final VersionGraphMapper versionGraphMapper;
 
     @GetMapping
     public Result<Page<Script>> list(@RequestParam(defaultValue = "1") int page,
@@ -40,6 +43,7 @@ public class ScriptController {
         return script != null ? Result.success(script) : Result.error(404, "脚本不存在");
     }
 
+    @OperationLog(module = "脚本管理", action = "生成")
     @PostMapping("/generate")
     public Result<Script> generate(@RequestBody Map<String, Object> body) {
         Long taskId = Long.valueOf(body.get("taskId").toString());
@@ -72,6 +76,7 @@ public class ScriptController {
         return Result.success(null);
     }
 
+    @OperationLog(module = "脚本管理", action = "批准")
     @PostMapping("/{id}/approve")
     public Result<Void> approve(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         Long reviewerId = body != null && body.get("reviewerId") != null
@@ -80,6 +85,7 @@ public class ScriptController {
         return Result.success(null);
     }
 
+    @OperationLog(module = "脚本管理", action = "驳回")
     @PostMapping("/{id}/reject")
     public Result<Void> reject(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         Long reviewerId = body != null && body.get("reviewerId") != null
@@ -90,12 +96,16 @@ public class ScriptController {
     }
 
     @GetMapping("/{id}/versions")
-    public Result<List<Script>> versions(@PathVariable Long id) {
+    public Result<List<VersionGraph>> versions(@PathVariable Long id) {
         Script script = scriptMapper.selectById(id);
         if (script == null) {
             return Result.error(404, "脚本不存在");
         }
-        // MVP 版本：仅返回当前版本信息
-        return Result.success(List.of(script));
+        List<VersionGraph> versions = versionGraphMapper.selectList(
+                new LambdaQueryWrapper<VersionGraph>()
+                        .eq(VersionGraph::getEntityType, "SCRIPT")
+                        .eq(VersionGraph::getEntityId, id)
+                        .orderByDesc(VersionGraph::getVersion));
+        return Result.success(versions);
     }
 }

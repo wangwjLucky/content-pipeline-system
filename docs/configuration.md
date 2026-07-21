@@ -295,6 +295,7 @@ settings = Settings()  # 全局单例，各服务共享
 | `PIPELINE_DOUBAO_API_KEY`    | 豆包 TTS API Key            | `sk-xxx`                                 | `sk-xxx`                                       |
 | `PIPELINE_VEO_API_KEY`       | Google Veo 视频生成 API Key | `sk-xxx`                                 | `sk-xxx`                                       |
 | `PIPELINE_GATEWAY_URL`       | 自身地址（供其他服务调用）  | `http://ai-gateway:8001`                 | `http://ai-gateway:8001`                       |
+| `PIPELINE_PIPELINE_ADMIN_URL` | Java 后台地址（用于同步模型配置） | `http://host.docker.internal:8080` | `http://host.docker.internal:8080`（由`environment`覆盖） |
 | `PIPELINE_CALLBACK_TOKEN`    | 回调认证令牌                | `pipeline-callback-token-change-in-prod` | 由`${CALLBACK_TOKEN}` 注入                     |
 | `PIPELINE_DEBUG`             | 调试模式                    | `false`                                  | `false`                                        |
 
@@ -528,8 +529,8 @@ docker compose up -d
 | `PIPELINE_SENSENOVA_API_KEY` | `str`  | `""`                                     | gateway         | SenseNova API Key           |
 | `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key    |
 | `PIPELINE_DOUBAO_API_KEY`    | `str`  | `""`                                     | gateway         | 豆包 TTS API Key            |
-| `PIPELINE_KELING_API_KEY`    | `str`  | `""`                                     | gateway         | 可灵 AI 视频生成 API Key    |
 | `PIPELINE_VEO_API_KEY`       | `str`  | `""`                                     | gateway         | Google Veo 视频生成 API Key |
+| `PIPELINE_PIPELINE_ADMIN_URL` | `str`  | `http://pipeline-admin:8080`             | gateway         | Java 后台地址（同步模型配置）|
 | `PIPELINE_CALLBACK_TOKEN`    | `str`  | `pipeline-callback-token-change-in-prod` | 所有服务        | 回调认证令牌                |
 
 ### 7.2 Java 后端

@@ -127,10 +127,9 @@ public class ScriptServiceImpl implements ScriptService {
             throw new IllegalArgumentException("脚本不存在: " + scriptId);
         }
 
-        // 更新内容并递增版本号
+        // 更新内容（@Version 注解自动处理版本号递增）
         script.setContent(content);
         script.setSubtitle(subtitle);
-        script.setVersion(script.getVersion() == null ? 1 : script.getVersion() + 1);
         // 编辑后需要重新审核
         script.setStatus("PENDING_REVIEW");
         scriptMapper.updateById(script);

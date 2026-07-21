@@ -294,19 +294,21 @@ ai-services/
 ```
 WAIT         → SCRIPTING              | CANCELLED
 SCRIPTING    → SCRIPT_REVIEW          | ERROR | CANCELLED
-SCRIPT_REVIEW → STORYBOARD (批准)     | WAIT (驳回) | CANCELLED
+SCRIPT_REVIEW → STORYBOARD (批准)     | READY (纯文案批准) | WAIT (驳回) | CANCELLED
 STORYBOARD   → GENERATING             | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
-GENERATING   → VOICEOVER              | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
+GENERATING   → VOICEOVER              | REVIEW (图片/图文) | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
 VOICEOVER    → VOICEOVER (素材就绪中)  | EDITING | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
-EDITING      → REVIEW                 | ERROR | CANCELLED
-REVIEW       → READY (通过)            | WAIT (驳回) | CANCELLED
+EDITING      → REVIEW                 | SCRIPT_REVIEW (脚本驳回) | ERROR | CANCELLED
+REVIEW       → READY (通过)            | SCRIPT_REVIEW (脚本驳回) | WAIT (驳回) | CANCELLED
 READY        → PUBLISHED              | CANCELLED
 PUBLISHED    → (终态)
 CANCELLED    → (终态)
 ERROR        → WAIT (重试)            | CANCELLED
 ```
 
-注意：`VOICEOVER` 支持自循环（素材就绪中场景），`STORYBOARD`、`GENERATING`、`VOICEOVER` 支持回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核）。`SCRIPT_REVIEW` 驳回后进入 `WAIT`，`REVIEW` 驳回后也进入 `WAIT`，均需重新从脚本生成开始。
+注意：`VOICEOVER` 支持自循环（素材就绪中场景），`STORYBOARD`、`GENERATING`、`VOICEOVER`、`EDITING` 支持回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核）。`SCRIPT_REVIEW` 驳回后进入 `WAIT`，`REVIEW` 驳回后也进入 `WAIT`，均需重新从脚本生成开始。
+
+`SCRIPT_REVIEW → READY` 用于纯文案（`text`）类型脚本审核通过后直达待发布。`GENERATING → REVIEW` 用于图片/图文（`image`/`image_text`）类型素材生成后直接进入终审。
 
 ### 4.3 核心 SQL 示例
 
@@ -560,8 +562,8 @@ Java ← HTTP Callback (POST /api/v1/tasks/callback) ← Python
 
 Callback Body:
 {
-  "task_id": 123,
-  "service": "script | video | voice | ffmpeg",
+  "taskId": 123,
+  "service": "script | prompt | video | image | voice | ffmpeg",
   "status": "SUCCESS | FAILED",
   "data": { ... },        // 成功时的结果数据
   "error": "..."          // 失败时的错误信息
@@ -660,9 +662,6 @@ Python AI Gateway（:8001）
 ### 7.2 死信机制
 
 所有业务队列均配置了 `x-dead-letter-exchange: pipeline.dlx` 和 `x-dead-letter-routing-key: dlq.task`。当消息被拒绝（`basic.nack` with `requeue=false`）或超时后，自动进入死信队列 `pipeline.dlq.task`。
-| `pipeline.voice.generate` | Direct | Python | 配音生成任务 |
-| `pipeline.ffmpeg.compile` | Direct | Python | 剪辑合成任务 |
-| `pipeline.task.callback` | Direct | Java | Python 回调结果 |
 
 ### 7.2 消息格式
 
@@ -685,7 +684,7 @@ Python AI Gateway（:8001）
 // Python → Java 回调消息
 {
   "message_id": "uuid",
-  "task_id": 123,
+  "taskId": 123,
   "service": "script",
   "status": "SUCCESS",
   "data": {
@@ -719,15 +718,11 @@ Python AI Gateway（:8001）
  │                     │                     │                      │
  │                     ├─ INSERT task(WAIT)  │                      │
  │                     │                     │                      │
- │                     ├─ send → pipeline.task.create              │
- │                     │                     │                      │
- │                     ├─ listen ← pipeline.task.create            │
- │                     │                     │                      │
  │                     ├─ UPDATE task(SCRIPTING)                   │
  │                     │                     │                      │
  │                     ├─ send → pipeline.script.generate ────────►│
  │                     │                     │                      │
- │ ◄── 返回 task_id ───┤                     │                      │
+ │◄── 返回 task_id ────┤                     │                      │
  │                     │                     │                      │
  │                     │                     │     Python 开始生成脚本
  │                     │                     │           ...
@@ -742,31 +737,53 @@ Python AI Gateway（:8001）
 ### 8.2 完整流水线（异步编排）
 
 ```
-task.create
-    │
-    ▼
-script.generate ── callback ──► script_review (人工)
+script.generate ── callback ──► script_review (人工审核)
                                         │
-                                        ▼
-                               storyboard.auto-split
-                                        │
-                                        ▼
-                               prompt.generate
-                                        │
-                                        ▼
-                               video.generate (拆分为多段)
-                                        │
-                                        ▼
-                               voice.generate
-                                        │
-                                        ▼
-                               ffmpeg.compile
-                                        │
-                                        ▼
-                               review (人工终审)
-                                        │
-                                        ▼
-                               publish
+                          ┌─────────────┼──────────────┐
+                          ▼             ▼              ▼
+                    text 类型    image/image_text   video 类型
+                    直接发布     走图片流程        走视频流程
+                          │             │              │
+                          ▼             ▼              ▼
+                      ┌────────┐  ┌──────────┐  ┌──────────┐
+                      │ READY  │  │storyboard│  │storyboard│
+                      │ 待发布  │  │ 自动拆解  │  │ 自动拆解  │
+                      └────────┘  └────┬─────┘  └────┬─────┘
+                                       │              │
+                                       ▼              ▼
+                                  ┌──────────┐  ┌──────────┐
+                                  │prompt.   │  │prompt.   │
+                                  │generate  │  │generate  │
+                                  └────┬─────┘  └────┬─────┘
+                                       │              │
+                                       ▼              ▼
+                                  ┌──────────┐  ┌──────────┐
+                                  │image.    │  │video.    │
+                                  │generate  │  │generate  │
+                                  └────┬─────┘  └────┬─────┘
+                                       │              │
+                                       ▼              ▼
+                                  ┌──────────┐  ┌──────────┐
+                                  │ REVIEW   │  │voice.    │
+                                  │ 直接终审  │  │generate  │
+                                  └──────────┘  └────┬─────┘
+                                                      │
+                                                      ▼
+                                                 ┌──────────┐
+                                                 │ffmpeg.   │
+                                                 │compile   │
+                                                 └────┬─────┘
+                                                      │
+                                                      ▼
+                                                 ┌──────────┐
+                                                 │ REVIEW   │
+                                                 │ 人工终审  │
+                                                 └────┬─────┘
+                                                      │
+                                                      ▼
+                                                 ┌──────────┐
+                                                 │ publish  │
+                                                 └──────────┘
 ```
 
 ---
@@ -866,7 +883,7 @@ covers/123/20260716_cover.png
 | `video` | 完整视频 | 选题→脚本→分镜→素材→配音→剪辑→发布（现有流程） |
 | `text` | 文案/脚本文字 | 选题→脚本→审核→发布 |
 | `image` | 信息图/海报 | 选题→脚本→分镜→图片生成→发布 |
-| `image_text` | 图片+文案 | 选题→脚本→分镜→图片生成→排版→发布 |
+| `image_text` | 图片+文案 | 选题→脚本→分镜→图片生成→审核→发布 |
 
 ### 11.2 数据模型
 
@@ -883,7 +900,7 @@ ALTER TABLE task ADD COLUMN content_type VARCHAR(20) NOT NULL DEFAULT 'video';
 ```
 text:       WAIT → SCRIPTING → SCRIPT_REVIEW → READY → PUBLISHED
 image:      WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → REVIEW → READY → PUBLISHED
-image_text: WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → EDITING → REVIEW → READY → PUBLISHED
+image_text: WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → REVIEW → READY → PUBLISHED
 video:      WAIT → SCRIPTING → SCRIPT_REVIEW → STORYBOARD → GENERATING → VOICEOVER → EDITING → REVIEW → READY → PUBLISHED
 ```
 

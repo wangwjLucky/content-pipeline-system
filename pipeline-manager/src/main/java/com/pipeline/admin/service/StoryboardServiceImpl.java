@@ -40,7 +40,7 @@ public class StoryboardServiceImpl implements StoryboardService {
         // 批量插入并为每个分镜创建素材记录
         String mediaType = "video";
         Task task = taskMapper.selectById(taskId);
-        if (task != null && "image".equals(task.getContentType())) {
+        if (task != null && ("image".equals(task.getContentType()) || "image_text".equals(task.getContentType()))) {
             mediaType = "image";
         }
 

@@ -65,8 +65,10 @@
 | Python → Java（回调） | HTTP POST               | JSON（X-Callback-Token 认证） |
 | Python → AI API       | HTTP（通过 AI Gateway） | JSON                          |
 | 所有服务 → MinIO      | HTTP                    | S3 兼容 API                   |
+| Java → PostgreSQL     | JDBC                    | TCP :5432                     |
+| Java → Redis          | Redis Protocol          | TCP :6379                     |
 
-### 2.4 AI Gateway 路由策略
+### 2.2 AI Gateway 路由策略
 
 AI Gateway 按模型类型 + 权重动态选择 Provider：
 
@@ -80,10 +82,8 @@ AI Gateway 按模型类型 + 权重动态选择 Provider：
 | `/ai/v1/script/generate` | 遍历所有 Provider 找支持该模型的 |
 
 每个 Provider 有 `model_type` 和 `weight` 属性，`get_model_type(model_id)` 可查询单个模型的具体类型（如 `sensenova-u1-fast` → `image`）。
-| Java → PostgreSQL     | JDBC                    | TCP :5432                     |
-| Java → Redis          | Redis Protocol          | TCP :6379                     |
 
-### 2.2 消息队列（RabbitMQ）
+### 2.3 消息队列（RabbitMQ）
 
 | 队列                         | 生产者 | 消费者         | 说明         |
 | ---------------------------- | ------ | -------------- | ------------ |
@@ -94,7 +94,7 @@ AI Gateway 按模型类型 + 权重动态选择 Provider：
 | `pipeline.image.generate`  | Java   | image-service  | 触发图片生成 |
 | `pipeline.ffmpeg.compile`  | Java   | ffmpeg-service | 触发剪辑合成 |
 
-### 2.3 回调认证
+### 2.4 回调认证
 
 Python 服务回调 Java 时携带 `X-Callback-Token` 头，Java 端验证令牌有效性。
 
@@ -119,7 +119,7 @@ Task 支持 `content_type` 字段（`video`/`text`/`image`/`image_text`），不
 | `image` | → STORYBOARD | → **REVIEW**（跳过配音/剪辑） |
 | `image_text` | → STORYBOARD | → **REVIEW**（跳过配音/剪辑） |
 
-支持自循环和回退：`VOICEOVER` 可自循环（素材就绪中），`STORYBOARD`、`GENERATING`、`VOICEOVER` 可回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核），`SCRIPT_REVIEW` 驳回后回到 `WAIT` 重新开始。
+支持自循环和回退：`VOICEOVER` 可自循环（素材就绪中），`STORYBOARD`、`GENERATING`、`VOICEOVER`、`EDITING` 可回退到 `SCRIPT_REVIEW`（脚本驳回后重新审核），`SCRIPT_REVIEW` 驳回后回到 `WAIT` 重新开始。
 
 | 状态              | 说明                | 进度 |
 | ----------------- | ------------------- | ---- |
@@ -142,18 +142,18 @@ Task 支持 `content_type` 字段（`video`/`text`/`image`/`image_text`），不
 | ----------------- | ---------------------------------------------------------------------------------------------------- |
 | `WAIT`          | `WAIT`(自循环), `SCRIPTING`, `CANCELLED`                                                       |
 | `SCRIPTING`     | `SCRIPT_REVIEW`, `ERROR`, `CANCELLED`                                                          |
-| `SCRIPT_REVIEW` | `STORYBOARD`(脚本批准), `WAIT`(脚本驳回), `CANCELLED`                                          |
+| `SCRIPT_REVIEW` | `STORYBOARD`(脚本批准), `READY`(纯文案批准), `SCRIPT_REVIEW`(自循环), `WAIT`(脚本驳回), `CANCELLED` |
 | `STORYBOARD`    | `GENERATING`, `SCRIPT_REVIEW`(脚本驳回), `ERROR`, `CANCELLED`                                |
-| `GENERATING`    | `VOICEOVER`, `SCRIPT_REVIEW`(脚本驳回), `ERROR`, `CANCELLED`                                 |
+| `GENERATING`    | `VOICEOVER`, `REVIEW`(图片/图文), `SCRIPT_REVIEW`(脚本驳回), `ERROR`, `CANCELLED`                 |
 | `VOICEOVER`     | `VOICEOVER`(自循环,素材就绪中), `EDITING`, `SCRIPT_REVIEW`(脚本驳回), `ERROR`, `CANCELLED` |
-| `EDITING`       | `REVIEW`, `ERROR`, `CANCELLED`                                                                 |
-| `REVIEW`        | `READY`(审核通过), `WAIT`(驳回), `CANCELLED`                                                   |
+| `EDITING`       | `REVIEW`, `SCRIPT_REVIEW`(脚本驳回), `ERROR`, `CANCELLED`                                                                 |
+| `REVIEW`        | `READY`(审核通过), `SCRIPT_REVIEW`(脚本驳回), `WAIT`(驳回), `CANCELLED`                                                   |
 | `READY`         | `PUBLISHED`, `CANCELLED`                                                                         |
 | `PUBLISHED`     | (终态，无出站转换)                                                                                   |
 | `CANCELLED`     | (终态，无出站转换)                                                                                   |
 | `ERROR`         | `WAIT`(重试), `CANCELLED`                                                                        |
 
-> **注意**：`STORYBOARD` 及后续状态（`GENERATING`, `VOICEOVER`）支持回退到 `SCRIPT_REVIEW`，这是脚本被驳回后重新审核的场景。`SCRIPT_REVIEW` 驳回后进入 `WAIT`，`REVIEW` 驳回后也进入 `WAIT`，均需重新从脚本生成开始。`EDITING` 不支持直接回退到 `SCRIPT_REVIEW`。
+> **注意**：`STORYBOARD` 及后续状态（`GENERATING`, `VOICEOVER`, `EDITING`）支持回退到 `SCRIPT_REVIEW`，这是脚本被驳回后重新审核的场景。`SCRIPT_REVIEW` 驳回后进入 `WAIT`，`REVIEW` 驳回后也进入 `WAIT`，均需重新从脚本生成开始。
 
 ---
 

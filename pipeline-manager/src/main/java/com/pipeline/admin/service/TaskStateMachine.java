@@ -30,7 +30,7 @@ import static java.util.Map.entry;
  *   SCRIPTING → SCRIPT_REVIEW | ERROR | CANCELLED
  *   SCRIPT_REVIEW → STORYBOARD(批准) | WAIT(驳回) | CANCELLED
  *   STORYBOARD → GENERATING(素材生成) | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
- *   GENERATING → VOICEOVER(素材完成) | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
+ *   GENERATING → VOICEOVER(素材完成) | REVIEW(图片/图文) | SCRIPT_REVIEW(脚本驳回) | ERROR | CANCELLED
  *   VOICEOVER → EDITING(配音完成) | VOICEOVER(素材仍就绪中) | ERROR | CANCELLED
  *   EDITING → REVIEW | ERROR | CANCELLED
  *   REVIEW → READY(通过) | WAIT(驳回) | CANCELLED
@@ -48,7 +48,7 @@ public class TaskStateMachine {
             entry("SCRIPTING", Set.of("SCRIPT_REVIEW", "ERROR", "CANCELLED")),
             entry("SCRIPT_REVIEW", Set.of("STORYBOARD", "SCRIPT_REVIEW", "WAIT", "READY", "CANCELLED")),
             entry("STORYBOARD", Set.of("GENERATING", "SCRIPT_REVIEW", "ERROR", "CANCELLED")),
-            entry("GENERATING", Set.of("VOICEOVER", "SCRIPT_REVIEW", "ERROR", "CANCELLED")),
+            entry("GENERATING", Set.of("VOICEOVER", "REVIEW", "SCRIPT_REVIEW", "ERROR", "CANCELLED")),
             entry("VOICEOVER", Set.of("VOICEOVER", "EDITING", "SCRIPT_REVIEW", "ERROR", "CANCELLED")),
             entry("EDITING", Set.of("REVIEW", "SCRIPT_REVIEW", "ERROR", "CANCELLED")),
             entry("REVIEW", Set.of("READY", "SCRIPT_REVIEW", "WAIT", "CANCELLED")),

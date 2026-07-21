@@ -2,8 +2,11 @@
 
 import httpx
 from common.config import settings
+from common.logging import setup_logging
 from common.models import CallbackBody
 from typing import Optional
+
+logger = setup_logging("callback")
 
 
 def send_callback(
@@ -30,5 +33,5 @@ def send_callback(
             resp.raise_for_status()
             return True
     except Exception as e:
-        print(f"[Callback] 发送回调失败: taskId={task_id}, service={service}, error={e}")
+        logger.error(f"发送回调失败: taskId={task_id}, service={service}, error={e}")
         return False

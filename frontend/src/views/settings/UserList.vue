@@ -19,7 +19,7 @@
       </template>
     </a-table>
 
-    <a-modal v-model:visible="showAdd" :title="editingId ? '编辑用户' : '新增用户'" @ok="handleCreate" ok-text="保存">
+    <a-modal v-model:open="showAdd" :title="editingId ? '编辑用户' : '新增用户'" @ok="handleCreate" ok-text="保存">
       <a-form :model="form" layout="vertical">
         <a-form-item label="用户名"><a-input v-model:value="form.username" /></a-form-item>
         <a-form-item label="密码"><a-input-password v-model:value="form.password" /></a-form-item>

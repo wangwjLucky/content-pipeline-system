@@ -27,10 +27,11 @@ public class TaskJobHandler {
     @XxlJob("pendingTaskScanner")
     public void pendingTaskScanner() {
         log.info("开始扫描待处理任务...");
+        // 按优先级从高到低（数值越大优先级越高），每次最多处理 50 个
         List<Task> pending = taskMapper.selectList(
                 new LambdaQueryWrapper<Task>()
                         .eq(Task::getStatus, "WAIT")
-                        .orderByAsc(Task::getPriority)
+                        .orderByDesc(Task::getPriority)
                         .last("LIMIT 50"));
         int count = 0;
         for (Task task : pending) {
@@ -47,12 +48,22 @@ public class TaskJobHandler {
     @XxlJob("retryQueueProcessor")
     public void retryQueueProcessor() {
         log.info("开始处理重试队列...");
+        // 重试所有失败原因的任务（不限 SCRIPT_FAILED），每次最多 20 个
         List<Task> errored = taskMapper.selectList(
                 new LambdaQueryWrapper<Task>()
                         .eq(Task::getStatus, "ERROR")
-                        .eq(Task::getFailReason, "SCRIPT_FAILED")
+                        .isNotNull(Task::getFailReason)
                         .last("LIMIT 20"));
-        XxlJobHelper.handleSuccess("重试队列处理完成，待重试 " + errored.size() + " 个");
+        int count = 0;
+        for (Task task : errored) {
+            try {
+                taskService.retryTask(task.getId(), "SYSTEM");
+                count++;
+            } catch (Exception e) {
+                log.warn("重试失败: taskId={}, error={}", task.getId(), e.getMessage());
+            }
+        }
+        XxlJobHelper.handleSuccess("重试队列处理完成，重试 " + count + " 个任务");
     }
 
     @XxlJob("timeoutMonitor")

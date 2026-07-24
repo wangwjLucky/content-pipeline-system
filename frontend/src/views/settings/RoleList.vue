@@ -16,7 +16,7 @@
       </template>
     </a-table>
 
-    <a-modal v-model:visible="showForm" :title="editingId ? '编辑角色' : '新增角色'" @ok="handleSave" ok-text="保存">
+    <a-modal v-model:open="showForm" :title="editingId ? '编辑角色' : '新增角色'" @ok="handleSave" ok-text="保存">
       <a-form :model="form" layout="vertical">
         <a-form-item label="角色名称"><a-input v-model:value="form.name" /></a-form-item>
         <a-form-item label="角色编码"><a-input v-model:value="form.code" /></a-form-item>

@@ -39,3 +39,14 @@ Thumbs.db
 
 # 构建输出
 *.egg-info/
+
+# 测试截图输出
+test-screenshots/
+test-results/
+
+# 本地 MCP 配置
+.mcp.json
+
+# 根目录 package（测试用）
+/package.json
+/package-lock.json

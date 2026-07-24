@@ -87,7 +87,7 @@ public class CallbackController {
         if ("SUCCESS".equals(status)) {
             handleSuccess(task, service, data);
         } else {
-            String failReason = service != null ? service.toUpperCase() + "_FAILED" : "UNKNOWN_FAILED";
+            String failReason = mapFailReason(service);
             taskService.updateStatus(task.getId(), "ERROR", task.getProgress(), error, failReason);
             log.error("任务处理失败: taskId={}, service={}, failReason={}, error={}", taskId, service, failReason, error);
         }
@@ -95,23 +95,36 @@ public class CallbackController {
         return Result.success("ok");
     }
 
+    private String mapFailReason(String service) {
+        if (service == null) return "UNKNOWN_FAILED";
+        return switch (service) {
+            case "script" -> "SCRIPT_FAILED";
+            case "prompt", "video", "image" -> "MATERIAL_FAILED";
+            case "voice" -> "VOICE_FAILED";
+            case "ffmpeg" -> "EDIT_FAILED";
+            case "review" -> "PUBLISH_FAILED";
+            default -> service.toUpperCase() + "_FAILED";
+        };
+    }
+
     private void handleSuccess(Task task, String service, Map<String, Object> data) {
         switch (service) {
             case "script" -> {
-                // 幂等性检查：如果该任务已有脚本，则更新现有脚本而非创建新记录
                 LambdaQueryWrapper<Script> existingQuery = new LambdaQueryWrapper<Script>()
                         .eq(Script::getTaskId, task.getId());
                 Script existingScript = scriptMapper.selectOne(existingQuery);
 
                 if (existingScript != null) {
-                    // 更新现有脚本
                     existingScript.setTitle(data != null ? (String) data.get("title") : null);
                     existingScript.setContent(data != null ? (String) data.get("content") : null);
                     existingScript.setSubtitle(data != null ? (String) data.get("subtitle") : null);
                     existingScript.setStatus("PENDING_REVIEW");
-                    scriptMapper.updateById(existingScript);
-                    taskService.updateStatus(task.getId(), "SCRIPT_REVIEW", 30, null);
-                    log.info("脚本已更新（幂等回调）: taskId={}, scriptId={}", task.getId(), existingScript.getId());
+                    if (scriptMapper.updateById(existingScript) == 0) {
+                        log.error("脚本更新失败（乐观锁冲突）: scriptId={}, taskId={}", existingScript.getId(), task.getId());
+                    } else {
+                        taskService.updateStatus(task.getId(), "SCRIPT_REVIEW", 30, null);
+                        log.info("脚本已更新（幂等回调）: taskId={}, scriptId={}", task.getId(), existingScript.getId());
+                    }
                 } else {
                     Script script = new Script();
                     script.setTaskId(task.getId());
@@ -122,7 +135,6 @@ public class CallbackController {
                     script.setStatus("PENDING_REVIEW");
                     scriptMapper.insert(script);
                     taskService.updateStatus(task.getId(), "SCRIPT_REVIEW", 30, null);
-                    // 重新查询 task 获取最新版本号，避免 updateStatus 乐观锁递增后版本号陈旧
                     Task freshTask = taskMapper.selectById(task.getId());
                     Task update = new Task();
                     update.setId(freshTask.getId());
@@ -137,7 +149,6 @@ public class CallbackController {
                 }
             }
             case "prompt" -> {
-                // 保存 AI 自动拆分的分镜数据（batchSave 内部会推进到 GENERATING 并触发素材生成）
                 if (data != null && data.containsKey("storyboards")) {
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> sbList = (List<Map<String, Object>>) data.get("storyboards");
@@ -165,9 +176,13 @@ public class CallbackController {
                 if (data != null && data.containsKey("materialId")) {
                     Material m = materialMapper.selectById(((Number) data.get("materialId")).longValue());
                     if (m != null) {
-                        m.setUrl(url);
-                        m.setStatus("SUCCESS");
-                        materialMapper.updateById(m);
+                        if (url != null) {
+                            m.setUrl(url);
+                            m.setStatus("SUCCESS");
+                            materialMapper.updateById(m);
+                        } else {
+                            log.warn("素材 URL 为空，跳过素材状态更新: materialId={}, taskId={}", m.getId(), task.getId());
+                        }
                     }
                 }
                 taskService.updateStatus(task.getId(), "VOICEOVER", 60, null);
@@ -178,12 +193,15 @@ public class CallbackController {
                 if (data != null && data.containsKey("materialId")) {
                     Material m = materialMapper.selectById(((Number) data.get("materialId")).longValue());
                     if (m != null) {
-                        m.setUrl(url);
-                        m.setStatus("SUCCESS");
-                        materialMapper.updateById(m);
+                        if (url != null) {
+                            m.setUrl(url);
+                            m.setStatus("SUCCESS");
+                            materialMapper.updateById(m);
+                        } else {
+                            log.warn("素材 URL 为空，跳过素材状态更新: materialId={}, taskId={}", m.getId(), task.getId());
+                        }
                     }
                 }
-                // 纯图片/图文：图片生成完成后直接进入 REVIEW
                 if ("image".equals(task.getContentType()) || "image_text".equals(task.getContentType())) {
                     taskService.updateStatus(task.getId(), "REVIEW", 95, null);
                     log.info("图片生成完成（图文/纯图片）: taskId={}", task.getId());
@@ -194,7 +212,6 @@ public class CallbackController {
             }
             case "voice" -> {
                 String voiceUrl = data != null ? (String) data.get("url") : null;
-                // 更新配音记录
                 if (voiceUrl != null) {
                     com.pipeline.admin.entity.Voice voice = voiceMapper.selectOne(
                             new LambdaQueryWrapper<com.pipeline.admin.entity.Voice>()

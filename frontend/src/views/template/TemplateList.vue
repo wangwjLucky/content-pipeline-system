@@ -19,7 +19,7 @@
       </template>
     </a-table>
 
-    <a-modal v-model:visible="showForm" :title="editingId ? '编辑模板' : '新增模板'" @ok="handleSave" ok-text="保存" width="700px">
+    <a-modal v-model:open="showForm" :title="editingId ? '编辑模板' : '新增模板'" @ok="handleSave" ok-text="保存" width="700px">
       <a-form :model="form" layout="vertical">
         <a-form-item label="名称"><a-input v-model:value="form.name" /></a-form-item>
         <a-form-item label="类型">

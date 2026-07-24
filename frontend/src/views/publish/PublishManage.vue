@@ -23,7 +23,7 @@
       </template>
     </a-table>
 
-    <a-modal v-model:visible="visible" title="新建发布" @ok="handleCreate" width="600px">
+    <a-modal v-model:open="visible" title="新建发布" @ok="handleCreate" width="600px">
       <a-form :model="form" layout="vertical">
         <a-form-item label="任务 ID"><a-input-number v-model:value="form.taskId" style="width: 100%" /></a-form-item>
         <a-form-item label="平台">
@@ -39,7 +39,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:visible="scheduleVisible" title="定时发布" @ok="handleSchedule" ok-text="确认定时">
+    <a-modal v-model:open="scheduleVisible" title="定时发布" @ok="handleSchedule" ok-text="确认定时">
       <a-form>
         <a-form-item label="定时时间">
           <a-date-picker v-model:value="scheduleTime" show-time style="width: 100%" />

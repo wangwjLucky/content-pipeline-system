@@ -154,7 +154,8 @@ CREATE TABLE IF NOT EXISTS task_event (
     operator    VARCHAR(50),
     comment     TEXT,
     payload     TEXT,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_task_event_task ON task_event(task_id);
 
@@ -214,7 +215,8 @@ CREATE TABLE IF NOT EXISTS ai_task_log (
     retry_count     INT DEFAULT 0,
     status          VARCHAR(20) DEFAULT 'PENDING',
     error_message   TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_ai_task_log_task ON ai_task_log(task_id);
 CREATE INDEX IF NOT EXISTS idx_ai_task_log_provider ON ai_task_log(provider);
@@ -244,7 +246,8 @@ CREATE TABLE IF NOT EXISTS pipeline_node (
     parallel        BOOLEAN DEFAULT FALSE,
     retryable       BOOLEAN DEFAULT TRUE,
     timeout_seconds INT DEFAULT 300,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 流水线节点关系表（DAG）
@@ -254,7 +257,9 @@ CREATE TABLE IF NOT EXISTS pipeline_node_relation (
     from_node_id    BIGINT NOT NULL REFERENCES pipeline_node(id),
     to_node_id      BIGINT NOT NULL REFERENCES pipeline_node(id),
     condition_expr  VARCHAR(500),
-    sort_order      INT NOT NULL
+    sort_order      INT NOT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 版本 DAG 表
@@ -266,9 +271,12 @@ CREATE TABLE IF NOT EXISTS version_graph (
     parent_version_id BIGINT REFERENCES version_graph(id),
     snapshot        TEXT,
     created_by      BIGINT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_version_graph_entity ON version_graph(entity_type, entity_id);
+-- 唯一约束，防止同一实体出现重复版本号
+CREATE UNIQUE INDEX IF NOT EXISTS idx_version_graph_uk ON version_graph(entity_type, entity_id, version);
 
 -- 任务执行表
 CREATE TABLE IF NOT EXISTS task_run (
@@ -279,7 +287,8 @@ CREATE TABLE IF NOT EXISTS task_run (
     triggered_by    VARCHAR(50),
     started_at      TIMESTAMP,
     finished_at     TIMESTAMP,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_task_run_task ON task_run(task_id);
 
@@ -297,7 +306,8 @@ CREATE TABLE IF NOT EXISTS task_node_run (
     started_at      TIMESTAMP,
     finished_at     TIMESTAMP,
     error_message   TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_task_node_run_run ON task_node_run(run_id);
 

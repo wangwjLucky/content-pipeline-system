@@ -30,8 +30,11 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 jwt:
+  # 生产环境务必通过 JWT_SECRET 环境变量设置强密钥
   secret: ${JWT_SECRET:pipeline-secret-key-change-in-prod}
 
+# 回调地址（供 Python AI 服务回调 Java 使用）
+# Docker 部署时改为 http://pipeline-admin:8080
 pipeline:
   callback-base-url: ${CALLBACK_BASE_URL:http://host.docker.internal:8080}
   callback-token: ${CALLBACK_TOKEN:pipeline-callback-token-change-in-prod}

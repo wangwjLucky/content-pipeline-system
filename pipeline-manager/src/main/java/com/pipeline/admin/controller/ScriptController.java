@@ -10,6 +10,7 @@ import com.pipeline.admin.mapper.VersionGraphMapper;
 import com.pipeline.admin.service.ScriptService;
 import com.pipeline.admin.common.Result;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -55,7 +56,8 @@ public class ScriptController {
     @OperationLog(module = "脚本管理", action = "编辑")
     @PutMapping("/{id}")
     public Result<Script> update(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        Script updated = scriptService.edit(id, body.get("content"), body.get("subtitle"), null);
+        Long editorId = getCurrentUserId();
+        Script updated = scriptService.edit(id, body.get("content"), body.get("subtitle"), editorId);
         return Result.success(updated);
     }
 
@@ -97,15 +99,22 @@ public class ScriptController {
 
     @GetMapping("/{id}/versions")
     public Result<List<VersionGraph>> versions(@PathVariable Long id) {
-        Script script = scriptMapper.selectById(id);
-        if (script == null) {
+        if (scriptMapper.selectById(id) == null) {
             return Result.error(404, "脚本不存在");
         }
-        List<VersionGraph> versions = versionGraphMapper.selectList(
+        List<VersionGraph> versionHistory = versionGraphMapper.selectList(
                 new LambdaQueryWrapper<VersionGraph>()
                         .eq(VersionGraph::getEntityType, "SCRIPT")
                         .eq(VersionGraph::getEntityId, id)
                         .orderByDesc(VersionGraph::getVersion));
-        return Result.success(versions);
+        return Result.success(versionHistory);
+    }
+
+    private Long getCurrentUserId() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof Long userId) {
+            return userId;
+        }
+        return null;
     }
 }

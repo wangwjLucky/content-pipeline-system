@@ -1,5 +1,7 @@
 package com.pipeline.admin.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pipeline.admin.entity.Script;
 import com.pipeline.admin.entity.Task;
 import com.pipeline.admin.entity.VersionGraph;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,6 +28,7 @@ public class ScriptServiceImpl implements ScriptService {
     private final TaskService taskService;
     private final AiService aiService;
     private final VersionGraphMapper versionGraphMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -44,6 +48,9 @@ public class ScriptServiceImpl implements ScriptService {
 
         task.setScriptId(script.getId());
         taskMapper.updateById(task);
+
+        // 立即更新任务状态为 SCRIPT_REVIEW，无需等待 AI 回调
+        taskService.updateStatus(taskId, "SCRIPT_REVIEW", 30, null);
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
@@ -110,32 +117,44 @@ public class ScriptServiceImpl implements ScriptService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Script edit(Long scriptId, String content, String subtitle, Long editorId) {
         Script script = scriptMapper.selectById(scriptId);
         if (script == null) {
             throw new IllegalArgumentException("脚本不存在: " + scriptId);
         }
 
-        int oldVersion = script.getVersion() != null ? script.getVersion() : 1;
         script.setContent(content);
         script.setSubtitle(subtitle);
         script.setStatus("PENDING_REVIEW");
-        scriptMapper.updateById(script);
-
-        // 记录版本历史
-        VersionGraph vg = new VersionGraph();
-        vg.setEntityType("SCRIPT");
-        vg.setEntityId(scriptId);
-        vg.setVersion(oldVersion + 1);
-        vg.setParentVersionId(null);
-        vg.setSnapshot(String.format("{\"content\":\"%s\",\"subtitle\":\"%s\"}", content, subtitle));
-        vg.setCreatedBy(editorId);
-        versionGraphMapper.insert(vg);
+        // 检查乐观锁，失败时抛出异常回滚事务
+        if (scriptMapper.updateById(script) == 0) {
+            throw new IllegalStateException("脚本更新失败，数据已被其他操作修改: scriptId=" + scriptId);
+        }
 
         Task currentTask = taskMapper.selectById(script.getTaskId());
         if (currentTask != null && !"SCRIPT_REVIEW".equals(currentTask.getStatus())) {
             taskService.updateStatus(script.getTaskId(), "SCRIPT_REVIEW", 30, null);
+        }
+
+        // 记录版本历史（使用 Jackson 序列化避免 JSON 转义问题）
+        try {
+            // 使用 HashMap 避免 Map.of() 在值为 null 时抛 NPE
+            Map<String, String> snapshotMap = new HashMap<>();
+            snapshotMap.put("content", content);
+            snapshotMap.put("subtitle", subtitle);
+            String snapshot = objectMapper.writeValueAsString(snapshotMap);
+            VersionGraph vg = new VersionGraph();
+            vg.setEntityType("SCRIPT");
+            vg.setEntityId(scriptId);
+            // updateById 后 @Version 已自增，直接取即可
+            vg.setVersion(script.getVersion() != null ? script.getVersion() : 1);
+            vg.setSnapshot(snapshot);
+            vg.setCreatedBy(editorId);
+            versionGraphMapper.insert(vg);
+        } catch (JsonProcessingException e) {
+            log.warn("版本快照序列化失败: scriptId={}", scriptId, e);
+            throw new RuntimeException("版本快照序列化失败，事务回滚", e);
         }
 
         log.info("脚本已编辑: scriptId={}, version={}", scriptId, script.getVersion());

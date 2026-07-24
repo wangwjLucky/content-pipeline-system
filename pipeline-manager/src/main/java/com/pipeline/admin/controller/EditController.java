@@ -43,6 +43,7 @@ public class EditController {
         data.put("taskId", taskId);
         data.put("title", task.getTitle());
         data.put("status", task.getStatus());
+        // 终审或待发布状态返回预览地址，其他状态不返回
         if ("REVIEW".equals(task.getStatus()) || "READY".equals(task.getStatus())) {
             data.put("previewUrl", "https://minio.internal/pipeline-videos-final/" + taskId + "/preview.mp4");
         }

@@ -152,6 +152,14 @@ public class TaskServiceImpl implements TaskService {
             throw new IllegalArgumentException("任务不存在: " + taskId);
         }
 
+        // 检查重试次数上限（最多 3 次）
+        int currentRetryCount = task.getRetryCount() != null ? task.getRetryCount() : 0;
+        if (currentRetryCount >= 3) {
+            cancelTask(taskId, operator, "重试次数超过上限 (3)，任务已取消");
+            log.warn("任务重试次数超过上限，已取消: taskId={}, retryCount={}", taskId, currentRetryCount);
+            return;
+        }
+
         String oldStatus = task.getStatus();
         String error = stateMachine.validate(oldStatus, "WAIT");
         if (error != null) {
@@ -164,7 +172,7 @@ public class TaskServiceImpl implements TaskService {
         update.setProgress(0);
         update.setErrorMessage(null);
         update.setFailReason(null);
-        update.setRetryCount((task.getRetryCount() != null ? task.getRetryCount() : 0) + 1);
+        update.setRetryCount(currentRetryCount + 1);
         update.setVersion(task.getVersion());
         int rows = taskMapper.updateById(update);
         if (rows == 0) {

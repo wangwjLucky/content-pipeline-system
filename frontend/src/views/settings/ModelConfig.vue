@@ -19,7 +19,7 @@
       </template>
     </a-table>
 
-    <a-modal v-model:visible="visible" :title="editingId ? '编辑配置' : '新增配置'" @ok="handleSave" ok-text="保存" width="600px">
+    <a-modal v-model:open="visible" :title="editingId ? '编辑配置' : '新增配置'" @ok="handleSave" ok-text="保存" width="600px">
       <a-form :model="form" layout="vertical">
         <a-form-item label="模型" :rules="[{ required: true }]">
           <a-select v-model:value="form.modelName" placeholder="从可用模型中选择" show-search @change="onModelSelect">

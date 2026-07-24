@@ -19,7 +19,7 @@
       </template>
     </a-table>
 
-    <a-modal v-model:visible="showAdd" title="新增平台账号" @ok="handleCreate" ok-text="创建">
+    <a-modal v-model:open="showAdd" title="新增平台账号" @ok="handleCreate" ok-text="创建">
       <a-form :model="form" layout="vertical">
         <a-form-item label="平台">
           <a-select v-model:value="form.platform">

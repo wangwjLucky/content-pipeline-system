@@ -19,7 +19,7 @@
         </template>
       </template>
     </a-table>
-    <a-modal v-model:visible="visible" title="新建选题" @ok="handleCreate">
+    <a-modal v-model:open="visible" title="新建选题" @ok="handleCreate">
       <a-form :model="form">
         <a-form-item label="标题" :rules="[{ required: true }]">
           <a-input v-model:value="form.title" />
